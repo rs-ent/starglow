@@ -3,19 +3,19 @@
 "use client";
 
 import { memo } from "react";
-import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
+import { useOnchainRafflesV2 } from "@/app/actions/raffles/onchain/hooks-v2";
 import RafflesOnchainList from "./Raffles.Onchain.List";
 import PartialLoading from "@/components/atoms/PartialLoading";
 
 function Raffles() {
-    const { onchainRaffles, isOnchainRafflesLoading, isOnchainRafflesError } =
-        useOnchainRaffles({
-            getOnchainRafflesInput: {
-                isActive: "ACTIVE",
+    const { allRaffles, isAllRafflesLoading, isAllRafflesError } =
+        useOnchainRafflesV2({
+            getAllRafflesInput: {
+                isActive: "ALL",
             },
         });
 
-    if (isOnchainRafflesLoading) {
+    if (isAllRafflesLoading) {
         return (
             <div className="relative flex flex-col w-full min-h-screen h-full overflow-hidden items-center justify-center">
                 <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
@@ -42,7 +42,7 @@ function Raffles() {
         );
     }
 
-    if (isOnchainRafflesError) {
+    if (isAllRafflesError) {
         return (
             <div className="p-6 bg-gray-900 min-h-screen text-white">
                 <h1 className="text-2xl font-bold mb-4">Onchain Raffles</h1>
@@ -51,7 +51,7 @@ function Raffles() {
         );
     }
 
-    return <RafflesOnchainList raffles={onchainRaffles?.data?.raffles || []} />;
+    return <RafflesOnchainList raffles={allRaffles?.data || []} />;
 }
 
 export default memo(Raffles);

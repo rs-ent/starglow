@@ -1,10 +1,16 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { tierMap } from "../raffle-tier";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
+import type { PrizeData } from "@/app/actions/raffles/onchain/actions-write-v2";
+
+const ITEM_VARIANTS = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { opacity: 1, x: 0 },
+};
 
 export interface TierInfo {
     name: string;
@@ -18,20 +24,6 @@ export interface TierInfo {
     mainColorR: number;
     mainColorG: number;
     mainColorB: number;
-}
-
-export interface PrizeData {
-    title?: string;
-    description?: string;
-    imageUrl?: string;
-    iconUrl?: string;
-    prizeType?: number;
-    prizeQuantity?: bigint | number;
-    rarity?: bigint | number;
-    order?: bigint | number;
-    registeredTicketQuantity?: bigint | number;
-    pickedTicketQuantity?: bigint | number;
-    startTicketNumber?: bigint | number;
 }
 
 export const getTierInfo = (rarity: number): TierInfo => {
@@ -80,17 +72,9 @@ export const TierHeader = memo(function TierHeader({
     prizeCount,
     sectionIndex,
 }: TierHeaderProps) {
-    const itemVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, x: -20 },
-            visible: { opacity: 1, x: 0 },
-        }),
-        []
-    );
-
     return (
         <motion.div
-            variants={itemVariants}
+            variants={ITEM_VARIANTS}
             transition={{
                 duration: 0.6,
                 ease: "easeOut",
@@ -139,18 +123,10 @@ export const TierContainer = memo(function TierContainer({
     sectionIndex,
     children,
 }: TierContainerProps) {
-    const itemVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, x: -20 },
-            visible: { opacity: 1, x: 0 },
-        }),
-        []
-    );
-
     return (
         <motion.div
             key={tier}
-            variants={itemVariants}
+            variants={ITEM_VARIANTS}
             transition={{
                 duration: 0.6,
                 ease: "easeOut",

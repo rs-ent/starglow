@@ -20,8 +20,10 @@ import type {
 
 export function useGetPlayerAssets({
     getPlayerAssetsInput,
+    realtime = false,
 }: {
     getPlayerAssetsInput?: GetPlayerAssetsInput;
+    realtime?: boolean;
 }) {
     return useQuery({
         queryKey: playerAssetsKeys.balances(
@@ -29,9 +31,10 @@ export function useGetPlayerAssets({
             getPlayerAssetsInput?.filter?.assetIds || []
         ),
         queryFn: () => getPlayerAssets(getPlayerAssetsInput),
-        staleTime: 500,
+        staleTime: realtime ? 0 : 500,
         gcTime: 1000,
         refetchOnWindowFocus: true,
+        refetchIntervalInBackground: false,
     });
 }
 

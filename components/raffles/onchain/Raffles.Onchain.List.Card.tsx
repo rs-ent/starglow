@@ -3,10 +3,11 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
+import { useOnchainRafflesV2 } from "@/app/actions/raffles/onchain/hooks-v2";
 import Link from "next/link";
 import { useAssetsGet } from "@/app/actions/assets/hooks";
 import RaffleOnchainHero from "./Raffle.Onchain.Hero";
+import PartialLoading from "@/components/atoms/PartialLoading";
 
 interface RafflesOnchainListCardProps {
     contractAddress: string;
@@ -17,22 +18,33 @@ function RafflesOnchainListCard({
     contractAddress,
     raffleId,
 }: RafflesOnchainListCardProps) {
-    const { raffleCoreInfoForListCard } = useOnchainRaffles({
-        getRaffleCoreInfoForListCardInput: {
+    const { raffleCardInfo, isRaffleCardInfoLoading } = useOnchainRafflesV2({
+        getRaffleCardInfoInput: {
             contractAddress,
             raffleId,
         },
     });
 
+    console.log(raffleCardInfo);
+
+    const coreData = useMemo(() => {
+        return raffleCardInfo?.data;
+    }, [raffleCardInfo]);
+
     const { asset } = useAssetsGet({
         getAssetInput: {
-            id: raffleCoreInfoForListCard?.data?.participationFeeAssetId || "",
+            id: coreData?.participationFeeAssetId || "",
         },
     });
 
-    const coreData = useMemo(() => {
-        return raffleCoreInfoForListCard?.data;
-    }, [raffleCoreInfoForListCard]);
+    if (isRaffleCardInfoLoading) {
+        return (
+            <div className="relative flex w-full h-32 overflow-hidden items-center justify-center">
+                <div className="fixed inset-0 bg-gradient-to-b from-[#09021B] to-[#311473] -z-20" />
+                <PartialLoading />
+            </div>
+        );
+    }
 
     return (
         <Link
@@ -56,13 +68,15 @@ function RafflesOnchainListCard({
                     participationLimit:
                         coreData?.participationLimit?.toString(),
                     participationCount:
-                        coreData?.participationCount?.toString(),
+                        coreData?.totalParticipations?.toString(),
                     participationFeeAsset: {
                         symbol: asset?.symbol || "",
                         iconUrl: asset?.iconUrl || "",
                     },
                     participationFeeAmount:
                         coreData?.participationFeeAmount?.toString(),
+                    uniqueParticipants:
+                        coreData?.uniqueParticipants?.toString(),
                 }}
                 contractAddress={contractAddress}
                 raffleId={raffleId}

@@ -22,13 +22,30 @@ interface RaffleOnchainPrizesTierItemProps {
         prizeQuantity?: bigint | number;
         rarity?: bigint | number;
         order?: bigint | number;
-        registeredTicketQuantity?: bigint | number;
-        pickedTicketQuantity?: bigint | number;
-        startTicketNumber?: bigint | number;
+        quantity?: bigint | number;
     };
     index?: number;
     totalPrizes?: number;
 }
+
+const ITEM_VARIANTS = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: { opacity: 1, y: 0, scale: 1 },
+};
+
+const HOVER_VARIANTS = {
+    y: -6,
+    scale: 1.03,
+};
+
+const IMAGE_VARIANTS = {
+    initial: { scale: 1, rotate: 0 },
+};
+
+const IMAGE_HOVER_VARIANTS = {
+    scale: 1.1,
+    rotate: 2,
+};
 
 const PrizeItemEmpty = memo(({ index }: { index: number }) => (
     <motion.div
@@ -67,20 +84,12 @@ export default memo(function RaffleOnchainPrizesTierItem({
         const prizeQuantity = data.prizeQuantity
             ? Number(data.prizeQuantity)
             : 0;
-        const registeredTickets = data.registeredTicketQuantity
-            ? Number(data.registeredTicketQuantity)
-            : 0;
-        const pickedTickets = data.pickedTicketQuantity
-            ? Number(data.pickedTicketQuantity)
-            : 0;
+        const quantity = data.quantity ? Number(data.quantity) : 0;
 
         const tier = Math.min(rarity, Object.keys(tierMap).length - 1);
         const tierInfo = tierMap[tier as keyof typeof tierMap] || tierMap[0];
 
-        const percentage =
-            totalPrizes > 0
-                ? ((registeredTickets - pickedTickets) / totalPrizes) * 100
-                : 0;
+        const percentage = totalPrizes > 0 ? (quantity / totalPrizes) * 100 : 0;
 
         return {
             order,
@@ -88,47 +97,19 @@ export default memo(function RaffleOnchainPrizesTierItem({
             tier,
             tierInfo,
             prizeQuantity,
-            registeredTickets,
-            pickedTickets,
+            quantity,
             percentage,
             isNFT: data.prizeType === 1,
             isAsset: data.prizeType === 0,
-            startTicketNumber: data.startTicketNumber
-                ? Number(data.startTicketNumber)
-                : 0,
         };
-    }, [data, totalPrizes]);
-
-    const itemVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, y: 20, scale: 0.95 },
-            visible: { opacity: 1, y: 0, scale: 1 },
-        }),
-        []
-    );
-
-    const hoverVariants = useMemo(
-        () => ({
-            y: -6,
-            scale: 1.03,
-        }),
-        []
-    );
-
-    const imageVariants = useMemo(
-        () => ({
-            initial: { scale: 1, rotate: 0 },
-        }),
-        []
-    );
-
-    const imageHoverVariants = useMemo(
-        () => ({
-            scale: 1.1,
-            rotate: 2,
-        }),
-        []
-    );
+    }, [
+        data?.order,
+        data?.rarity,
+        data?.prizeQuantity,
+        data?.quantity,
+        data?.prizeType,
+        totalPrizes,
+    ]);
 
     if (!data || !prizeInfo) {
         return <PrizeItemEmpty index={index} />;
@@ -136,10 +117,10 @@ export default memo(function RaffleOnchainPrizesTierItem({
 
     return (
         <motion.div
-            variants={itemVariants}
+            variants={ITEM_VARIANTS}
             initial="hidden"
             animate="visible"
-            whileHover={hoverVariants}
+            whileHover={HOVER_VARIANTS}
             transition={{
                 delay: index * 0.05,
                 type: "spring",
@@ -164,8 +145,8 @@ export default memo(function RaffleOnchainPrizesTierItem({
                     )}
                 >
                     <motion.div
-                        variants={imageVariants}
-                        whileHover={imageHoverVariants}
+                        variants={IMAGE_VARIANTS}
+                        whileHover={IMAGE_HOVER_VARIANTS}
                         transition={{ duration: 0.3, ease: "easeOut" }}
                         className={cn(
                             "relative w-full h-full rounded-xl border-2 flex items-center justify-center overflow-hidden gpu-animate",

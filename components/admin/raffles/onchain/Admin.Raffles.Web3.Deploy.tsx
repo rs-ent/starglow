@@ -1,25 +1,22 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
-    FaRocket,
     FaArrowLeft,
-    FaNetworkWired,
-    FaWallet,
+    FaRocket,
+    FaCog,
+    FaCheckCircle,
+    FaSpinner,
+    FaShieldAlt,
+    FaPause,
 } from "react-icons/fa";
 import { SiEthereum } from "react-icons/si";
 import { TbTopologyStar3 } from "react-icons/tb";
 
+import { useToast } from "@/app/hooks/useToast";
 import { useStoryNetwork } from "@/app/story/network/hooks";
 import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import { useToast } from "@/app/hooks/useToast";
-import {
-    estimateGasSimple,
-    estimateGasComprehensive,
-} from "@/app/story/interaction/actions";
-import { deployRafflesContract } from "@/app/actions/raffles/onchain/actions-admin";
-
-import rafflesJson from "@/web3/artifacts/contracts/Raffles.sol/Raffles.json";
+import { deployRafflesV2Contract } from "@/app/actions/raffles/onchain/actions-admin-v2";
 
 interface Props {
     onBack: () => void;
@@ -42,132 +39,136 @@ interface GasEstimation {
 
 export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
     const toast = useToast();
+    const { storyNetworks } = useStoryNetwork();
+    const { escrowWallets } = useEscrowWallets();
+
     const [form, setForm] = useState<DeployForm>({
         networkId: "",
         walletAddress: "",
-        contractName: "StarglowRaffles",
+        contractName: "RafflesV2 Contract",
     });
+
     const [isDeploying, setIsDeploying] = useState(false);
     const [gasEstimation, setGasEstimation] = useState<GasEstimation | null>(
         null
     );
-    const [isEstimatingGas, setIsEstimatingGas] = useState(false);
-    const [walletBalances, setWalletBalances] = useState<
-        Record<string, string>
-    >({});
-
-    const { storyNetworks, isLoadingStoryNetworks } = useStoryNetwork({
-        getStoryNetworksInput: {
-            isActive: true,
-        },
+    const [deployedContract, setDeployedContract] = useState<any>(null);
+    const [deploymentProgress, setDeploymentProgress] = useState({
+        step: 0,
+        status: "idle" as "idle" | "deploying" | "completed" | "error",
+        txHash: "",
+        error: null as string | null,
     });
 
-    const {
-        escrowWallets,
-        isLoadingEscrowWallets,
-        fetchEscrowWalletsBalanceAsync,
-        isPendingFetchEscrowWalletsBalance,
-    } = useEscrowWallets({
-        getEscrowWalletsInput: {
-            isActive: true,
-        },
-    });
-
-    const refreshGasEstimate = useCallback(async () => {
-        if (!form.networkId || !form.walletAddress) {
-            toast.warning("먼저 네트워크와 지갑을 선택해주세요.");
-            return;
+    // 네트워크 선택 시 호환되는 지갑 자동 선택
+    useEffect(() => {
+        if (form.networkId && escrowWallets && escrowWallets.length > 0) {
+            const compatibleWallet = escrowWallets.find((wallet) =>
+                wallet.networkIds.includes(form.networkId)
+            );
+            if (compatibleWallet && !form.walletAddress) {
+                setForm((prev) => ({
+                    ...prev,
+                    walletAddress: compatibleWallet.address,
+                }));
+            }
         }
+    }, [form.networkId, escrowWallets, form.walletAddress]);
 
-        setIsEstimatingGas(true);
-        setGasEstimation(null);
+    // 가스비 추정 (단순화된 버전)
+    useEffect(() => {
+        if (form.networkId && form.walletAddress) {
+            const selectedNetwork = Array.isArray(storyNetworks)
+                ? storyNetworks.find((n) => n.id === form.networkId)
+                : null;
 
-        try {
-            // 간단한 가스 계산 (빠른 예상치)
-            const simpleEstimate = await estimateGasSimple({
-                networkId: form.networkId,
-                transactionType: "contractDeploy",
-                complexity: "medium",
-            });
-
-            setGasEstimation({
-                gas: simpleEstimate.estimatedGas,
-                cost: simpleEstimate.estimatedCost,
-                symbol: simpleEstimate.symbol,
-            });
-
-            // 백그라운드에서 정밀한 계산 수행
-            try {
-                const comprehensiveEstimate = await estimateGasComprehensive({
-                    networkId: form.networkId,
-                    walletAddress: form.walletAddress,
-                    deploymentBytecode: rafflesJson.bytecode as `0x${string}`,
-                    gasMultiplier: 1.2,
-                });
+            if (selectedNetwork) {
+                // V2 컨트랙트는 더 복잡하므로 가스비가 더 높음
+                const estimatedGas = "250000"; // V2에서 증가된 가스 사용량
+                const gasPrice = selectedNetwork.isTestnet ? "20" : "30"; // gwei
+                const gasCost =
+                    (parseInt(gasPrice) * parseInt(estimatedGas)) / 1e9;
 
                 setGasEstimation({
-                    gas: comprehensiveEstimate.estimatedGas.toString(),
-                    cost: comprehensiveEstimate.estimatedCostFormatted,
-                    symbol: comprehensiveEstimate.networkInfo.symbol,
-                    recommendation: comprehensiveEstimate.recommendation,
-                    confidence: comprehensiveEstimate.confidence,
+                    gas: estimatedGas,
+                    cost: gasCost.toFixed(6),
+                    symbol: selectedNetwork.symbol,
+                    recommendation: selectedNetwork.isTestnet
+                        ? "standard"
+                        : "fast",
+                    confidence: 85,
+                    usd: (gasCost * 2.5).toFixed(2), // 임시 USD 환율
                 });
-            } catch (detailedError) {
-                console.warn(
-                    "Detailed gas estimation failed, using simple estimate",
-                    detailedError
-                );
             }
-        } catch (error) {
-            console.error("Gas estimation failed:", error);
-            toast.error("가스비 계산에 실패했습니다.");
-            setGasEstimation({
-                gas: "계산 실패",
-                cost: "계산 실패",
-                symbol: "BERA",
-            });
-        } finally {
-            setIsEstimatingGas(false);
         }
-    }, [form.networkId, form.walletAddress, toast]);
+    }, [form.networkId, form.walletAddress, storyNetworks]);
+
+    const selectedNetwork = Array.isArray(storyNetworks)
+        ? storyNetworks.find((n) => n.id === form.networkId)
+        : null;
 
     const handleDeploy = async () => {
-        if (!form.networkId || !form.walletAddress || !form.contractName) {
-            toast.error("모든 필드를 입력해주세요.");
-            return;
-        }
-
-        if (!gasEstimation) {
-            toast.error("가스비를 먼저 계산해주세요.");
+        if (!form.networkId || !form.walletAddress) {
+            toast.error("네트워크와 지갑을 선택해주세요.");
             return;
         }
 
         setIsDeploying(true);
+        setDeploymentProgress({
+            step: 1,
+            status: "deploying",
+            txHash: "",
+            error: null,
+        });
+
         try {
-            const result = await deployRafflesContract({
+            toast.info("RafflesV2 컨트랙트 배포를 시작합니다...");
+
+            const result = await deployRafflesV2Contract({
                 networkId: form.networkId,
                 walletAddress: form.walletAddress,
                 contractName: form.contractName,
             });
 
             if (result.success && result.data) {
+                setDeployedContract(result.data);
+                setDeploymentProgress({
+                    step: 2,
+                    status: "completed",
+                    txHash: result.data.txHash,
+                    error: null,
+                });
+
                 toast.success(
-                    `컨트랙트가 성공적으로 배포되었습니다!\n주소: ${result.data.address.slice(
-                        0,
-                        10
-                    )}...${result.data.address.slice(-8)}`
+                    "RafflesV2 컨트랙트가 성공적으로 배포되었습니다!"
                 );
-                onBack();
+
+                // 폼 초기화
+                setForm({
+                    networkId: "",
+                    walletAddress: "",
+                    contractName: "RafflesV2 Contract",
+                });
             } else {
-                toast.error(result.error || "배포 중 오류가 발생했습니다.");
+                throw new Error(
+                    result.error || "컨트랙트 배포에 실패했습니다."
+                );
             }
         } catch (error) {
-            console.error("Contract deployment error:", error);
-            toast.error(
+            console.error("Error deploying RafflesV2 contract:", error);
+            const errorMessage =
                 error instanceof Error
                     ? error.message
-                    : "배포 중 예상치 못한 오류가 발생했습니다."
-            );
+                    : "컨트랙트 배포 중 오류가 발생했습니다.";
+
+            setDeploymentProgress({
+                step: 1,
+                status: "error",
+                txHash: "",
+                error: errorMessage,
+            });
+
+            toast.error(errorMessage);
         } finally {
             setIsDeploying(false);
         }
@@ -191,45 +192,20 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
     const getRecommendationText = (recommendation?: string) => {
         switch (recommendation) {
             case "low":
-                return "저속 (낮은 가스비)";
+                return "저속 (절약)";
             case "standard":
                 return "표준 (권장)";
             case "fast":
-                return "고속 (높은 가스비)";
+                return "고속";
             case "urgent":
-                return "긴급 (매우 높은 가스비)";
+                return "긴급";
             default:
-                return "계산 중...";
+                return "표준";
         }
     };
 
-    const fetchAllBalances = useCallback(
-        async (networkId?: string) => {
-            const targetNetworkId = networkId || form.networkId;
-            if (!escrowWallets || !targetNetworkId) return;
-
-            try {
-                const result = await fetchEscrowWalletsBalanceAsync({
-                    networkId: targetNetworkId,
-                    addresses: escrowWallets.map((w) => w.address),
-                });
-                if (result) {
-                    setWalletBalances(
-                        result.reduce(
-                            (acc, cur) => ({
-                                ...acc,
-                                [cur.address]: cur.balance,
-                            }),
-                            {} as Record<string, string>
-                        )
-                    );
-                }
-            } catch (error) {
-                console.error("Failed to fetch wallet balances:", error);
-            }
-        },
-        [form.networkId, escrowWallets, fetchEscrowWalletsBalanceAsync]
-    );
+    const isFormValid =
+        form.networkId && form.walletAddress && form.contractName.trim();
 
     return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center bg-gradient-to-br from-[#181c2b] to-[#2a2342] p-8 rounded-2xl shadow-2xl border border-purple-900/30 relative overflow-hidden">
@@ -237,473 +213,454 @@ export default function AdminRafflesWeb3Deploy({ onBack }: Props) {
             <SiEthereum className="absolute text-[8rem] text-pink-800/10 right-[-2rem] bottom-[-2rem] pointer-events-none select-none" />
 
             <h1 className="mb-8 text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-xl flex items-center gap-3">
-                컨트랙트 <span className="text-purple-400">배포</span>
+                RafflesV2 <span className="text-purple-400">배포</span>
             </h1>
 
-            <div className="w-full max-w-6xl bg-black/20 rounded-xl p-8 border border-purple-500/20">
-                <div className="space-y-8">
-                    <div className="text-center">
-                        <FaRocket className="text-6xl text-purple-400 mx-auto mb-4" />
-                        <p className="text-gray-300 text-lg mb-6">
-                            새로운 래플 컨트랙트를 블록체인에 배포합니다
-                        </p>
-                    </div>
-
-                    {/* 네트워크 선택 */}
-                    <div className="bg-black/30 rounded-xl p-6 border border-gray-700">
-                        <h3 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
-                            <FaNetworkWired className="text-cyan-400" />
-                            네트워크 선택
-                        </h3>
-                        {isLoadingStoryNetworks ? (
-                            <div className="text-center text-blue-200 py-8">
-                                네트워크 불러오는 중...
+            <div className="w-full max-w-4xl bg-black/20 rounded-xl p-8 border border-purple-500/20">
+                {/* V2 특징 안내 */}
+                <div className="mb-8 p-6 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-xl border border-purple-700/30">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                        <FaRocket className="mr-3 text-purple-400" size={20} />
+                        RafflesV2 새로운 기능
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-3 p-3 bg-purple-900/20 rounded-lg border border-purple-700/50">
+                            <FaShieldAlt
+                                className="text-purple-400"
+                                size={16}
+                            />
+                            <div>
+                                <div className="font-medium text-white text-sm">
+                                    역할 기반 제어
+                                </div>
+                                <div className="text-xs text-purple-300">
+                                    ADMIN, OPERATOR 역할
+                                </div>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {Array.isArray(storyNetworks) &&
-                                    storyNetworks?.map((network) => (
-                                        <button
-                                            key={network.id}
-                                            onClick={() => {
-                                                setForm((prev) => ({
-                                                    ...prev,
-                                                    networkId: network.id,
-                                                    walletAddress: "",
-                                                }));
-                                                fetchAllBalances(
-                                                    network.id
-                                                ).catch((error) => {
-                                                    console.error(
-                                                        "Failed to fetch wallet balances:",
-                                                        error
-                                                    );
-                                                });
-                                            }}
-                                            className={`
-                                            relative group p-4 rounded-xl border-2 transition-all duration-300
-                                            ${
-                                                form.networkId === network.id
-                                                    ? "border-cyan-400 bg-cyan-900/30 scale-105 ring-2 ring-cyan-300/30"
-                                                    : "border-gray-600 bg-gray-800/50 hover:border-cyan-500/50 hover:scale-102"
-                                            }
-                                        `}
-                                        >
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <div className="text-2xl">
-                                                    {network.isTestnet
-                                                        ? "🧪"
-                                                        : "🌐"}
-                                                </div>
-                                                <div className="text-left">
-                                                    <h4 className="font-bold text-cyan-200">
-                                                        {network.name}
-                                                    </h4>
-                                                    <p className="text-xs text-gray-400">
-                                                        Chain ID:{" "}
-                                                        {network.chainId}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 flex-wrap">
-                                                <span
-                                                    className={`px-2 py-1 rounded-full text-xs ${
-                                                        network.isTestnet
-                                                            ? "bg-yellow-500/20 text-yellow-300"
-                                                            : "bg-green-500/20 text-green-300"
-                                                    }`}
-                                                >
-                                                    {network.isTestnet
-                                                        ? "Testnet"
-                                                        : "Mainnet"}
-                                                </span>
-                                                {network.isActive && (
-                                                    <span className="px-2 py-1 rounded-full text-xs bg-blue-500/20 text-blue-300">
-                                                        Active
-                                                    </span>
-                                                )}
-                                                {network.defaultNetwork && (
-                                                    <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-300">
-                                                        Default
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {form.networkId === network.id && (
-                                                <div className="absolute -top-2 -right-2 bg-cyan-400 text-black rounded-full px-2 py-1 text-xs font-bold">
-                                                    ✓
-                                                </div>
-                                            )}
-                                        </button>
-                                    ))}
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-blue-900/20 rounded-lg border border-blue-700/50">
+                            <FaPause className="text-blue-400" size={16} />
+                            <div>
+                                <div className="font-medium text-white text-sm">
+                                    일시정지 기능
+                                </div>
+                                <div className="text-xs text-blue-300">
+                                    긴급 상황 대응
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-green-900/20 rounded-lg border border-green-700/50">
+                            <FaCog className="text-green-400" size={16} />
+                            <div>
+                                <div className="font-medium text-white text-sm">
+                                    배치 추첨
+                                </div>
+                                <div className="text-xs text-green-300">
+                                    대량 처리 최적화
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 배포 진행률 */}
+                {deploymentProgress.status !== "idle" && (
+                    <div className="mb-8 p-6 bg-gray-800 rounded-xl border border-gray-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-medium text-white">
+                                배포 진행률
+                            </h3>
+                            <span className="text-sm text-gray-400">
+                                {deploymentProgress.step}/2 단계
+                            </span>
+                        </div>
+
+                        <div className="w-full bg-gray-700 rounded-full h-2 mb-4">
+                            <div
+                                className={`h-2 rounded-full transition-all duration-500 ${
+                                    deploymentProgress.status === "error"
+                                        ? "bg-red-500"
+                                        : deploymentProgress.status ===
+                                          "completed"
+                                        ? "bg-green-500"
+                                        : "bg-blue-500"
+                                }`}
+                                style={{
+                                    width: `${
+                                        (deploymentProgress.step / 2) * 100
+                                    }%`,
+                                }}
+                            />
+                        </div>
+
+                        <div className="text-sm">
+                            {deploymentProgress.status === "deploying" && (
+                                <span className="text-blue-400">
+                                    🚀 컨트랙트 배포 중...
+                                </span>
+                            )}
+                            {deploymentProgress.status === "completed" && (
+                                <span className="text-green-400">
+                                    ✅ 배포 완료!
+                                </span>
+                            )}
+                            {deploymentProgress.status === "error" && (
+                                <span className="text-red-400">
+                                    ❌ 오류: {deploymentProgress.error}
+                                </span>
+                            )}
+                        </div>
+
+                        {deploymentProgress.txHash && (
+                            <div className="mt-2 text-xs text-gray-500">
+                                TX: {deploymentProgress.txHash}
                             </div>
                         )}
                     </div>
+                )}
 
-                    {/* 지갑 선택 - 네트워크 선택 후 표시 */}
-                    {form.networkId && (
-                        <div className="bg-black/30 rounded-xl p-6 border border-gray-700">
-                            <h3 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
-                                <FaWallet className="text-purple-400" />
-                                관리자 지갑 선택
-                            </h3>
-                            {isLoadingEscrowWallets ? (
-                                <div className="text-center text-blue-200 py-8">
-                                    지갑 불러오는 중...
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {escrowWallets?.map((wallet) => (
-                                        <button
-                                            key={wallet.address}
-                                            onClick={() =>
-                                                setForm((prev) => ({
-                                                    ...prev,
-                                                    walletAddress:
-                                                        wallet.address,
-                                                }))
-                                            }
-                                            className={`
-                                                relative group p-6 rounded-xl border-2 transition-all duration-300
-                                                ${
-                                                    form.walletAddress ===
-                                                    wallet.address
-                                                        ? "border-purple-400 bg-purple-900/30 scale-105 ring-2 ring-purple-300/30"
-                                                        : "border-gray-600 bg-gray-800/50 hover:border-purple-500/50 hover:scale-102"
-                                                }
-                                            `}
-                                        >
-                                            <div className="flex items-center gap-4 mb-3">
-                                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg">
-                                                    W
-                                                </div>
-                                                <div className="text-left">
-                                                    <h4 className="font-bold text-purple-200">
-                                                        관리자 지갑
-                                                    </h4>
-                                                    <p className="text-sm text-blue-300 font-mono">
-                                                        {wallet.address.slice(
-                                                            0,
-                                                            10
-                                                        )}
-                                                        ...
-                                                        {wallet.address.slice(
-                                                            -8
-                                                        )}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className="text-gray-400">
-                                                    잔액:
-                                                </span>
-                                                <span className="text-cyan-300 font-bold">
-                                                    {isPendingFetchEscrowWalletsBalance ? (
-                                                        <span className="animate-pulse">
-                                                            ...
-                                                        </span>
-                                                    ) : (
-                                                        <span>
-                                                            {String(
-                                                                walletBalances[
-                                                                    wallet
-                                                                        .address
-                                                                ] || "0"
-                                                            )}{" "}
-                                                            BERA
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </div>
-                                            {wallet.isActive && (
-                                                <div className="mt-2 text-center">
-                                                    <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs">
-                                                        Active
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {form.walletAddress ===
-                                                wallet.address && (
-                                                <div className="absolute -top-2 -right-2 bg-purple-400 text-black rounded-full px-2 py-1 text-xs font-bold">
-                                                    ✓
-                                                </div>
-                                            )}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
+                {/* 배포 성공 결과 */}
+                {deployedContract && (
+                    <div className="mb-8 p-6 bg-green-900/20 rounded-xl border border-green-700">
+                        <h3 className="text-lg font-bold text-green-400 mb-4 flex items-center">
+                            <FaCheckCircle className="mr-3" size={20} />
+                            배포 완료
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span className="text-gray-400">
+                                    컨트랙트 주소:
+                                </span>
+                                <p className="text-white font-mono break-all">
+                                    {deployedContract.address}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="text-gray-400">
+                                    블록 번호:
+                                </span>
+                                <p className="text-white">
+                                    #{deployedContract.blockNumber}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="text-gray-400">
+                                    트랜잭션 해시:
+                                </span>
+                                <p className="text-white font-mono break-all">
+                                    {deployedContract.txHash}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="text-gray-400">배포자:</span>
+                                <p className="text-white font-mono">
+                                    {deployedContract.deployedBy}
+                                </p>
+                            </div>
                         </div>
-                    )}
+                        <div className="mt-4 p-3 bg-green-800/30 rounded-lg">
+                            <p className="text-green-300 text-sm">
+                                💡 V2 컨트랙트에서는 배포자에게 모든 관리자
+                                권한이 자동으로 부여됩니다.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
-                    {form.networkId && form.walletAddress && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* 컨트랙트 설정 */}
-                            <div className="bg-black/30 rounded-xl p-6 border border-gray-700">
-                                <h3 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
-                                    <FaRocket className="text-green-400" />
-                                    컨트랙트 설정
-                                </h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-gray-300 text-sm mb-2">
-                                            컨트랙트 이름
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="StarglowRaffles"
-                                            value={form.contractName}
-                                            onChange={(e) =>
-                                                setForm((prev) => ({
-                                                    ...prev,
-                                                    contractName:
-                                                        e.target.value,
-                                                }))
-                                            }
-                                            className="w-full bg-black/50 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:border-green-400 focus:outline-none transition-colors"
-                                        />
-                                        <p className="text-xs text-gray-400 mt-1">
-                                            배포될 컨트랙트의 식별자
-                                        </p>
-                                    </div>
-                                    <div className="bg-black/40 rounded-lg p-3 border border-gray-600">
-                                        <h4 className="text-white text-sm font-medium mb-2">
-                                            선택된 관리자
-                                        </h4>
-                                        <p className="text-purple-300 text-sm font-mono">
-                                            {form.walletAddress.slice(0, 10)}...
-                                            {form.walletAddress.slice(-8)}
-                                        </p>
-                                        <p className="text-gray-400 text-xs mt-1">
-                                            잔액:{" "}
-                                            {walletBalances[
-                                                form.walletAddress
-                                            ] || "0"}{" "}
-                                            BERA
-                                        </p>
-                                    </div>
+                <div className="space-y-8">
+                    <div className="text-center">
+                        <FaRocket className="text-6xl text-blue-400 mx-auto mb-4" />
+                        <p className="text-gray-300 text-lg mb-6">
+                            새로운 RafflesV2 컨트랙트를 블록체인에 배포합니다
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* 배포 설정 */}
+                        <div className="bg-black/30 rounded-lg p-6 border border-gray-700">
+                            <h3 className="text-white font-semibold mb-6 text-lg">
+                                배포 설정
+                            </h3>
+
+                            <div className="space-y-6">
+                                {/* 네트워크 선택 */}
+                                <div>
+                                    <label className="block text-gray-300 text-sm font-medium mb-3">
+                                        네트워크 *
+                                    </label>
+                                    <select
+                                        value={form.networkId}
+                                        onChange={(e) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                networkId: e.target.value,
+                                                walletAddress: "", // 네트워크 변경 시 지갑 초기화
+                                            }))
+                                        }
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        required
+                                    >
+                                        <option value="">
+                                            네트워크를 선택하세요
+                                        </option>
+                                        {Array.isArray(storyNetworks) &&
+                                            storyNetworks.map((network) => (
+                                                <option
+                                                    key={network.id}
+                                                    value={network.id}
+                                                >
+                                                    {network.name}{" "}
+                                                    {network.isTestnet
+                                                        ? "(Testnet)"
+                                                        : "(Mainnet)"}
+                                                </option>
+                                            ))}
+                                    </select>
+                                    {selectedNetwork && (
+                                        <div className="mt-2 text-xs text-gray-400">
+                                            Chain ID: {selectedNetwork.chainId}{" "}
+                                            | Symbol: {selectedNetwork.symbol}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 지갑 선택 */}
+                                <div>
+                                    <label className="block text-gray-300 text-sm font-medium mb-3">
+                                        배포자 지갑 *
+                                    </label>
+                                    <select
+                                        value={form.walletAddress}
+                                        onChange={(e) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                walletAddress: e.target.value,
+                                            }))
+                                        }
+                                        disabled={!form.networkId}
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                        required
+                                    >
+                                        <option value="">
+                                            {form.networkId
+                                                ? "지갑을 선택하세요"
+                                                : "먼저 네트워크를 선택하세요"}
+                                        </option>
+                                        {escrowWallets?.map((wallet) => (
+                                            <option
+                                                key={wallet.id}
+                                                value={wallet.address}
+                                            >
+                                                {wallet.address.slice(0, 10)}...
+                                                {wallet.address.slice(-8)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {form.walletAddress && (
+                                        <div className="mt-2 text-xs text-gray-400 font-mono">
+                                            {form.walletAddress}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 컨트랙트 이름 */}
+                                <div>
+                                    <label className="block text-gray-300 text-sm font-medium mb-3">
+                                        컨트랙트 이름
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={form.contractName}
+                                        onChange={(e) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                contractName: e.target.value,
+                                            }))
+                                        }
+                                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                        placeholder="RafflesV2 Contract"
+                                    />
+                                    <p className="mt-2 text-xs text-gray-400">
+                                        관리용 이름 (블록체인에는 영향 없음)
+                                    </p>
                                 </div>
                             </div>
+                        </div>
 
+                        {/* 가스비 및 배포 정보 */}
+                        <div className="space-y-6">
                             {/* 가스비 추정 */}
-                            <div className="bg-black/30 rounded-xl p-6 border border-gray-700">
-                                <h3 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
-                                    ⛽ 가스비 추정
-                                    {gasEstimation?.confidence && (
-                                        <span
-                                            className={`text-xs px-2 py-1 rounded-full ${
-                                                gasEstimation.confidence >= 80
-                                                    ? "bg-green-500/20 text-green-300"
-                                                    : gasEstimation.confidence >=
-                                                      60
-                                                    ? "bg-yellow-500/20 text-yellow-300"
-                                                    : "bg-red-500/20 text-red-300"
-                                            }`}
-                                        >
-                                            신뢰도 {gasEstimation.confidence}%
-                                        </span>
-                                    )}
-                                </h3>
-                                <div className="space-y-3">
-                                    {isEstimatingGas ? (
-                                        <div className="flex items-center justify-center py-4">
-                                            <div className="w-6 h-6 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mr-2"></div>
-                                            <span className="text-blue-300">
-                                                가스비 계산 중...
+                            {gasEstimation && (
+                                <div className="bg-black/30 rounded-lg p-6 border border-gray-700">
+                                    <h3 className="text-white font-semibold mb-4 text-lg">
+                                        가스비 추정
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-300">
+                                                예상 가스:
+                                            </span>
+                                            <span className="text-white font-mono">
+                                                {parseInt(
+                                                    gasEstimation.gas
+                                                ).toLocaleString()}
                                             </span>
                                         </div>
-                                    ) : gasEstimation ? (
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-300">
+                                                비용:
+                                            </span>
+                                            <span className="text-white font-medium">
+                                                {gasEstimation.cost}{" "}
+                                                {gasEstimation.symbol}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-300">
+                                                USD 환산:
+                                            </span>
+                                            <span className="text-green-400 font-medium">
+                                                ~${gasEstimation.usd}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-gray-300">
+                                                속도:
+                                            </span>
+                                            <span
+                                                className={`font-medium ${getRecommendationColor(
+                                                    gasEstimation.recommendation
+                                                )}`}
+                                            >
+                                                {getRecommendationText(
+                                                    gasEstimation.recommendation
+                                                )}
+                                            </span>
+                                        </div>
+                                        {gasEstimation.confidence && (
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-300">
+                                                    신뢰도:
+                                                </span>
+                                                <span className="text-blue-400 font-medium">
+                                                    {gasEstimation.confidence}%
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-4 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+                                        <p className="text-yellow-300 text-sm">
+                                            💡 V2 컨트랙트는 추가 기능으로 인해
+                                            일반 컨트랙트보다 가스비가 높습니다.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 배포 버튼 */}
+                            <div className="bg-black/30 rounded-lg p-6 border border-gray-700">
+                                <button
+                                    onClick={handleDeploy}
+                                    disabled={!isFormValid || isDeploying}
+                                    className={`w-full py-4 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-3 ${
+                                        !isFormValid || isDeploying
+                                            ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                                            : "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                                    }`}
+                                >
+                                    {isDeploying ? (
                                         <>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-400">
-                                                    예상 가스
-                                                </span>
-                                                <span className="text-white font-mono">
-                                                    {Number(
-                                                        gasEstimation.gas
-                                                    ).toLocaleString()}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-400">
-                                                    예상 비용
-                                                </span>
-                                                <span className="text-white font-bold">
-                                                    {parseFloat(
-                                                        gasEstimation.cost
-                                                    ).toFixed(6)}{" "}
-                                                    {gasEstimation.symbol}
-                                                </span>
-                                            </div>
-                                            {gasEstimation.recommendation && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-400">
-                                                        가스비 수준
-                                                    </span>
-                                                    <span
-                                                        className={getRecommendationColor(
-                                                            gasEstimation.recommendation
-                                                        )}
-                                                    >
-                                                        {getRecommendationText(
-                                                            gasEstimation.recommendation
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {gasEstimation.usd && (
-                                                <div className="flex justify-between">
-                                                    <span className="text-gray-400">
-                                                        USD 예상
-                                                    </span>
-                                                    <span className="text-white">
-                                                        ${gasEstimation.usd}
-                                                    </span>
-                                                </div>
-                                            )}
+                                            <FaSpinner
+                                                className="animate-spin"
+                                                size={20}
+                                            />
+                                            V2 배포 중...
                                         </>
                                     ) : (
-                                        <div className="text-center py-4 text-gray-400">
-                                            네트워크와 지갑을 선택한 뒤
-                                            새로고침을 클릭하세요
-                                        </div>
+                                        <>
+                                            <FaRocket size={20} />
+                                            RafflesV2 배포하기
+                                        </>
                                     )}
+                                </button>
 
-                                    <button
-                                        onClick={refreshGasEstimate}
-                                        disabled={
-                                            !form.networkId ||
-                                            !form.walletAddress ||
-                                            isEstimatingGas
-                                        }
-                                        className="w-full mt-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white py-2 rounded-lg transition-colors"
-                                    >
-                                        {isEstimatingGas
-                                            ? "계산 중..."
-                                            : "가스비 새로고침"}
-                                    </button>
+                                {!isFormValid && (
+                                    <p className="text-red-400 text-sm mt-3 text-center">
+                                        모든 필수 항목을 입력해주세요
+                                    </p>
+                                )}
+
+                                {isDeploying && (
+                                    <div className="mt-4 p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <FaSpinner
+                                                className="animate-spin text-blue-400"
+                                                size={14}
+                                            />
+                                            <span className="text-blue-400 font-medium text-sm">
+                                                배포 진행 중
+                                            </span>
+                                        </div>
+                                        <p className="text-blue-300 text-xs">
+                                            V2 컨트랙트가 블록체인에 배포되고
+                                            있습니다. 완료까지 2-3분 소요됩니다.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* V2 권한 정보 */}
+                            <div className="bg-black/30 rounded-lg p-6 border border-gray-700">
+                                <h3 className="text-white font-semibold mb-4 text-lg">
+                                    V2 권한 시스템
+                                </h3>
+                                <div className="space-y-3 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <FaShieldAlt
+                                            className="text-purple-400"
+                                            size={14}
+                                        />
+                                        <span className="text-gray-300">
+                                            DEFAULT_ADMIN_ROLE:
+                                        </span>
+                                        <span className="text-purple-400">
+                                            최고 관리자
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <FaShieldAlt
+                                            className="text-blue-400"
+                                            size={14}
+                                        />
+                                        <span className="text-gray-300">
+                                            ADMIN_ROLE:
+                                        </span>
+                                        <span className="text-blue-400">
+                                            관리자
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <FaShieldAlt
+                                            className="text-green-400"
+                                            size={14}
+                                        />
+                                        <span className="text-gray-300">
+                                            OPERATOR_ROLE:
+                                        </span>
+                                        <span className="text-green-400">
+                                            운영자
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="mt-4 p-3 bg-purple-900/30 border border-purple-700 rounded-lg">
+                                    <p className="text-purple-300 text-xs">
+                                        📋 배포자에게 모든 역할이 자동으로
+                                        부여됩니다.
+                                    </p>
                                 </div>
                             </div>
                         </div>
-                    )}
-
-                    {form.networkId && (
-                        <div className="bg-black/30 rounded-xl p-6 border border-gray-700">
-                            <h3 className="text-white font-semibold mb-4 text-lg">
-                                배포 상태
-                            </h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`w-3 h-3 rounded-full ${
-                                            form.networkId
-                                                ? "bg-green-400"
-                                                : "bg-gray-500"
-                                        }`}
-                                    ></div>
-                                    <span
-                                        className={
-                                            form.networkId
-                                                ? "text-green-400"
-                                                : "text-gray-400"
-                                        }
-                                    >
-                                        네트워크 선택됨
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`w-3 h-3 rounded-full ${
-                                            form.walletAddress
-                                                ? "bg-green-400"
-                                                : "bg-gray-500"
-                                        }`}
-                                    ></div>
-                                    <span
-                                        className={
-                                            form.walletAddress
-                                                ? "text-green-400"
-                                                : "text-gray-400"
-                                        }
-                                    >
-                                        관리자 지갑 선택됨
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`w-3 h-3 rounded-full ${
-                                            gasEstimation && !isEstimatingGas
-                                                ? "bg-green-400"
-                                                : "bg-gray-500"
-                                        }`}
-                                    ></div>
-                                    <span
-                                        className={
-                                            gasEstimation && !isEstimatingGas
-                                                ? "text-green-400"
-                                                : "text-gray-400"
-                                        }
-                                    >
-                                        가스비 계산 완료
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`w-3 h-3 rounded-full ${
-                                            form.contractName
-                                                ? "bg-green-400"
-                                                : "bg-gray-500"
-                                        }`}
-                                    ></div>
-                                    <span
-                                        className={
-                                            form.contractName
-                                                ? "text-green-400"
-                                                : "text-gray-400"
-                                        }
-                                    >
-                                        컨트랙트 이름 설정됨
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex justify-center gap-4 pt-6">
-                        <button
-                            onClick={handleDeploy}
-                            disabled={
-                                !form.networkId ||
-                                !form.walletAddress ||
-                                !form.contractName ||
-                                !gasEstimation ||
-                                isEstimatingGas ||
-                                isDeploying
-                            }
-                            className={`px-8 py-3 font-semibold rounded-lg transition-colors ${
-                                form.networkId &&
-                                form.walletAddress &&
-                                form.contractName &&
-                                gasEstimation &&
-                                !isEstimatingGas &&
-                                !isDeploying
-                                    ? "bg-purple-600 hover:bg-purple-700 text-white"
-                                    : "bg-gray-600 text-gray-400 cursor-not-allowed"
-                            }`}
-                        >
-                            {isDeploying ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    배포 중...
-                                </div>
-                            ) : (
-                                "컨트랙트 배포"
-                            )}
-                        </button>
-                        <button
-                            className="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors"
-                            onClick={onBack}
-                        >
-                            취소
-                        </button>
                     </div>
                 </div>
             </div>

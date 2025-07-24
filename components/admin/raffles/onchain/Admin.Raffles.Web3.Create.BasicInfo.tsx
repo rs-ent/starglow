@@ -23,7 +23,7 @@ import type {
 
 import FileUploaderIPFS from "@/components/atoms/FileUploader.IPFS";
 
-import { getRafflesContracts } from "@/app/actions/raffles/onchain/actions-admin";
+import { getRafflesContractsV2 } from "@/app/actions/raffles/onchain/actions-admin-v2";
 import type { RaffleFormData } from "./Admin.Raffles.Web3.Create.Manager";
 
 interface Props {
@@ -50,16 +50,15 @@ export function AdminRafflesWeb3CreateBasicInfo({
         async (networkId?: string) => {
             setIsLoadingContracts(true);
             try {
-                const result = await getRafflesContracts({
-                    networkId,
+                const result = await getRafflesContractsV2({
                     isActive: true,
                 });
 
                 if (result.success && result.data) {
                     setContracts(result.data);
                     // 스마트 기본값: 첫 번째 활성 컨트랙트 자동 선택
-                    if (result.data.length > 0 && !data.contractId) {
-                        updateData("contractId", result.data[0].id);
+                    if (result.data.length > 0 && !data.contractAddress) {
+                        updateData("contractAddress", result.data[0].address);
                     }
                 } else {
                     toast.error("컨트랙트 목록을 불러오는데 실패했습니다.");
@@ -73,7 +72,7 @@ export function AdminRafflesWeb3CreateBasicInfo({
                 setIsLoadingContracts(false);
             }
         },
-        [data.contractId, updateData]
+        [data.contractAddress, updateData]
     );
 
     useEffect(() => {
@@ -88,7 +87,7 @@ export function AdminRafflesWeb3CreateBasicInfo({
         (networkId: string) => {
             setSelectedNetwork(networkId);
             updateData("networkId", networkId);
-            updateData("contractId", "");
+            updateData("contractAddress", "");
             updateData("walletAddress", "");
 
             // 스마트 기본값: 네트워크 변경 시 호환되는 지갑 자동 선택
@@ -135,7 +134,7 @@ export function AdminRafflesWeb3CreateBasicInfo({
         (n) => n.id === selectedNetwork
     );
     const selectedContractData = contracts.find(
-        (c) => c.id === data.contractId
+        (c) => c.address === data.contractAddress
     );
     const availableWallets = escrowWallets?.filter((w) => {
         if (!selectedNetwork) return true;
@@ -160,7 +159,7 @@ export function AdminRafflesWeb3CreateBasicInfo({
     const completionPercentage =
         [
             selectedNetwork,
-            data.contractId,
+            data.contractAddress,
             data.walletAddress,
             data.basicInfo.title.trim(),
         ].filter(Boolean).length * 25;
@@ -296,10 +295,10 @@ export function AdminRafflesWeb3CreateBasicInfo({
                                 </label>
                                 <div className="relative">
                                     <select
-                                        value={data.contractId}
+                                        value={data.contractAddress}
                                         onChange={(e) =>
                                             updateData(
-                                                "contractId",
+                                                "contractAddress",
                                                 e.target.value
                                             )
                                         }
@@ -319,8 +318,8 @@ export function AdminRafflesWeb3CreateBasicInfo({
                                         </option>
                                         {contracts.map((contract) => (
                                             <option
-                                                key={contract.id}
-                                                value={contract.id}
+                                                key={contract.address}
+                                                value={contract.address}
                                             >
                                                 {contract.address.slice(0, 8)}
                                                 ...{contract.address.slice(-6)}

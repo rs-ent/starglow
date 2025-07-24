@@ -1209,6 +1209,13 @@ export async function validatePlayerAsset(
         };
     }
 
+    if (input.requiredAmount && input.requiredAmount <= 0) {
+        return {
+            success: true,
+            playerAsset: null,
+        };
+    }
+
     try {
         const tx = (externalTx || prisma) as typeof prisma;
         const asset = await tx.asset.findUnique({

@@ -22,7 +22,7 @@ import {
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
-import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
+import { useOnchainRafflesV2 } from "@/app/actions/raffles/onchain/hooks-v2";
 import { useToast } from "@/app/hooks/useToast";
 import { useAssetsGet } from "@/app/actions/assets/hooks";
 import { usePlayerAssetsGet } from "@/app/actions/playerAssets/hooks";
@@ -31,13 +31,16 @@ import { cn } from "@/lib/utils/tailwind";
 import { BorderBeam } from "@/components/magicui/border-beam";
 import { Particles } from "@/components/magicui/particles";
 import RaffleOnchainParticipationLog from "./Raffle.Onchain.Participation.Log";
+import type { PrizeData } from "@/app/actions/raffles/onchain/actions-write-v2";
+import { usePlayerAssetSet } from "@/app/actions/playerAssets/hooks";
 
 interface TicketData {
     raffleTitle: string;
     participantId: number;
     ticketNumber?: string;
+    lotteryTicketNumber?: string;
     txHash: string;
-    participatedAt: number;
+    participatedAt?: number;
     entryFeePaid: number;
     entryFeeAsset?: {
         symbol: string;
@@ -49,11 +52,11 @@ interface TicketData {
         imageUrl: string;
         prizeType: number;
         userValue: number;
-        order: number;
-        rarity: number;
+        prizeIndex?: number;
+        prizeQuantity?: number;
     };
     isInstantDraw?: boolean;
-    explorerUrl: string;
+    explorerUrl?: string;
     walletAddress: string;
 }
 
@@ -61,7 +64,8 @@ interface RaffleOnchainParticipationProps {
     contractAddress: string;
     raffleId: string;
     basicInfo?: any;
-    raffleData?: any;
+    prizesData?: PrizeData[];
+    originalPrizesData?: PrizeData[]; // 🚨 CRITICAL: 원본 배열 추가
     timingData?: any;
     settingsData?: any;
     feeData?: any;
@@ -77,6 +81,8 @@ export default memo(function RaffleOnchainParticipation({
     contractAddress,
     raffleId,
     basicInfo,
+    prizesData,
+    originalPrizesData, // 🚨 CRITICAL: 원본 배열 받기
     timingData,
     settingsData,
     feeData,
@@ -90,21 +96,19 @@ export default memo(function RaffleOnchainParticipation({
     const [showParticipationLog, setShowParticipationLog] = useState(false);
 
     const {
-        userParticipationSummary,
-        refetchUserParticipationSummary,
-        participateAsync,
-        participateAndDrawAsync,
-        isParticipatePending,
-        isParticipateAndDrawPending,
-        isParticipateError,
-        isParticipateAndDrawError,
-        participateError,
-        participateAndDrawError,
-    } = useOnchainRaffles({
-        getUserParticipationSummaryInput: {
+        userParticipationCount,
+        refetchUserParticipationCount,
+        participateV2Async,
+        isParticipateV2Pending,
+        isParticipateV2Error,
+        participateV2Error,
+
+        distributePrizeV2,
+    } = useOnchainRafflesV2({
+        getUserParticipationCountInput: {
             contractAddress,
             raffleId,
-            userId: session?.user.id || "",
+            playerId: session?.player?.id || "",
         },
     });
 
@@ -121,6 +125,10 @@ export default memo(function RaffleOnchainParticipation({
         },
     });
 
+    const dataToUse = useMemo(() => {
+        return originalPrizesData || prizesData;
+    }, [originalPrizesData, prizesData]);
+
     const entryFeeAsset = useMemo(() => (asset ? asset : null), [asset]);
 
     const currentTime = new Date().getTime();
@@ -135,12 +143,8 @@ export default memo(function RaffleOnchainParticipation({
         timingData?.endDate &&
         currentTime <= Number(timingData.endDate) * 1000;
 
-    const hasParticipated =
-        userParticipationSummary?.success &&
-        userParticipationSummary.data &&
-        userParticipationSummary.data.participationCount > 0;
-    const participationCount =
-        userParticipationSummary?.data?.participationCount || 0;
+    const participationCount = userParticipationCount?.data || 0;
+    const hasParticipated = participationCount > 0;
 
     const participationLimit = settingsData?.participationLimitPerPlayer
         ? Number(settingsData.participationLimitPerPlayer)
@@ -224,37 +228,67 @@ export default memo(function RaffleOnchainParticipation({
         return "Unable to participate right now. Please try again in a few moments.";
     };
 
+    const getPrizeFromIndex = useCallback(
+        (prizeIndex: number) => {
+            const dataToUse = originalPrizesData || prizesData;
+
+            if (
+                !dataToUse ||
+                prizeIndex < 0 ||
+                prizeIndex >= dataToUse.length
+            ) {
+                return undefined;
+            }
+
+            const prize = dataToUse[prizeIndex];
+            return {
+                title: prize.title || "Prize",
+                description: prize.description || "",
+                imageUrl: prize.imageUrl || "",
+                prizeType: prize.prizeType || 0,
+                userValue: 0,
+                prizeIndex,
+                prizeQuantity: prize.prizeQuantity
+                    ? Number(prize.prizeQuantity)
+                    : 1,
+            };
+        },
+        [prizesData, originalPrizesData]
+    );
+
     const handleParticipate = useCallback(async () => {
+        if (!dataToUse) {
+            toast.error("No prizes data found");
+            return;
+        }
+
         if (!session?.player?.id || !session?.user.id) {
             toast.error("Please login to participate");
             return;
         }
 
         try {
-            const participateAction = timingData?.instantDraw
-                ? participateAndDrawAsync
-                : participateAsync;
-
-            const result = await participateAction({
+            const result = await participateV2Async({
                 contractAddress,
                 raffleId,
+                raffleTitle: basicInfo?.title || "Raffle",
                 playerId: session.player.id,
-                userId: session.user.id,
+                instantDraw: Boolean(timingData?.instantDraw),
+                estimateGas: false,
+                gasSpeedMultiplier: 20,
+                entryFeeAssetId: feeData?.participationFeeAssetId || "",
+                entryFeeAmount: Number(feeData?.participationFeeAmount) || 0,
             });
 
             const ticket = {
                 raffleTitle: basicInfo?.title || "Raffle",
-                participantId: result?.participantId || 0,
-                ticketNumber:
-                    "ticketNumber" in (result || {})
-                        ? (result as any).ticketNumber
-                        : undefined,
+                participantId: Number(result?.participantId) || 0,
+                ticketNumber: result?.ticketNumber?.toString(),
+                lotteryTicketNumber: result?.ticketNumber?.toString(),
                 txHash: result?.txHash || "",
                 participatedAt:
-                    "participatedAt" in (result || {})
-                        ? (result as any).participatedAt
-                        : Math.floor(Date.now() / 1000),
-                entryFeePaid: result?.entryFeePaid || 0,
+                    result?.timestamp || Math.floor(Date.now() / 1000),
+                entryFeePaid: Number(feeData?.participationFeeAmount) || 0,
                 entryFeeAsset: entryFeeAsset
                     ? {
                           symbol: entryFeeAsset.symbol || "tokens",
@@ -262,12 +296,12 @@ export default memo(function RaffleOnchainParticipation({
                       }
                     : undefined,
                 prizeWon:
-                    "prizeWon" in (result || {})
-                        ? (result as any).prizeWon
+                    result?.hasResult && result?.prizeIndex !== undefined
+                        ? getPrizeFromIndex(result.prizeIndex)
                         : undefined,
                 isInstantDraw: Boolean(timingData?.instantDraw),
                 explorerUrl: "https://beratrail.io",
-                walletAddress: (result as any)?.walletAddress || "",
+                walletAddress: result?.walletAddress || "",
             };
 
             if (onParticipationSuccess) {
@@ -279,11 +313,18 @@ export default memo(function RaffleOnchainParticipation({
 
             if (timingData?.instantDraw && ticket.prizeWon) {
                 toast.success("🎉 Prize drawn! Scratch to reveal your reward!");
+                distributePrizeV2({
+                    playerId: session.player.id,
+                    prizeData: dataToUse[result?.prizeIndex || 0],
+                    prizeTitle:
+                        dataToUse[result?.prizeIndex || 0].title || "Prize",
+                    playerWalletAddress: result?.walletAddress || "",
+                });
             } else {
                 toast.success("🎫 Ticket successfully obtained! Good luck!");
             }
 
-            refetchUserParticipationSummary().catch((err: any) => {
+            refetchUserParticipationCount().catch((err: any) => {
                 console.error("Refetch error:", err);
             });
         } catch (error) {
@@ -294,16 +335,18 @@ export default memo(function RaffleOnchainParticipation({
     }, [
         session?.user.id,
         session?.player?.id,
-        participateAndDrawAsync,
-        participateAsync,
+        participateV2Async,
         contractAddress,
         raffleId,
         timingData,
         basicInfo?.title,
         entryFeeAsset,
+        feeData?.participationFeeAmount,
+        feeData?.participationFeeAssetId,
         toast,
-        refetchUserParticipationSummary,
+        refetchUserParticipationCount,
         onParticipationSuccess,
+        getPrizeFromIndex,
     ]);
 
     const handleShare = useCallback(
@@ -343,9 +386,9 @@ export default memo(function RaffleOnchainParticipation({
         [contractAddress, raffleId, basicInfo?.title]
     );
 
-    const isPending = isParticipatePending || isParticipateAndDrawPending;
-    const isError = isParticipateError || isParticipateAndDrawError;
-    const error = participateError || participateAndDrawError;
+    const isPending = isParticipateV2Pending;
+    const isError = isParticipateV2Error;
+    const error = participateV2Error;
 
     const containerVariants = useMemo(
         () => ({

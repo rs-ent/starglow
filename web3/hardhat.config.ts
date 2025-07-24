@@ -9,7 +9,7 @@ const config: HardhatUserConfig = {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 500,
+                runs: 500, // 500 → 200으로 변경 (바이트코드 크기 감소)
                 details: {
                     yul: true,
                     yulDetails: {
@@ -30,6 +30,8 @@ const config: HardhatUserConfig = {
                 ? [process.env.ESCROW_PRIVATE_KEY]
                 : [],
             chainId: 11155111,
+            timeout: 300000,
+            gasPrice: "auto",
         },
         polygonAmoy: {
             url:
@@ -39,6 +41,9 @@ const config: HardhatUserConfig = {
                 ? [process.env.ESCROW_PRIVATE_KEY]
                 : [],
             chainId: 80002,
+            timeout: 300000,
+            gas: 6000000,
+            gasPrice: 30000000000, // 30 gwei
         },
         berachain_bepolia: {
             url:
@@ -48,6 +53,9 @@ const config: HardhatUserConfig = {
                 ? [process.env.ESCROW_PRIVATE_KEY]
                 : [],
             chainId: 80069,
+            timeout: 300000,
+            gas: 6000000,
+            gasPrice: 10000000000, // 10 gwei
         },
     },
     paths: {

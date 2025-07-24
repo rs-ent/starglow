@@ -447,6 +447,9 @@ export async function getAssets(
             where,
             skip: (currentPage - 1) * itemsPerPage,
             take: itemsPerPage,
+            orderBy: {
+                createdAt: "desc",
+            },
         });
 
         const totalItems = await prisma.asset.count({

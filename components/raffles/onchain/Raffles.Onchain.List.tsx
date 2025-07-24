@@ -4,13 +4,16 @@
 
 import { memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Raffle } from "@/app/actions/raffles/onchain/actions-read";
 import RafflesOnchainListCard from "./Raffles.Onchain.List.Card";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 
 interface RafflesOnchainListProps {
-    raffles: Raffle[];
+    raffles: {
+        contractAddress: string;
+        raffleId: string;
+        isActive: boolean;
+    }[];
 }
 
 export default memo(function RafflesOnchainList({

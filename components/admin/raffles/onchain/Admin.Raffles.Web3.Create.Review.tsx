@@ -1,20 +1,21 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import {
-    FaCheckCircle,
+    FaCheck,
+    FaEdit,
     FaExclamationTriangle,
     FaInfoCircle,
-    FaSpinner,
-    FaEdit,
-    FaCalendarAlt,
-    FaCogs,
+    FaRocket,
+    FaGlobe,
+    FaNetworkWired,
+    FaWallet,
+    FaClock,
+    FaCog,
     FaCoins,
     FaGift,
-    FaRocket,
-    FaList,
     FaEye,
-    FaClock,
+    FaSpinner,
 } from "react-icons/fa";
 import type { RaffleFormData } from "./Admin.Raffles.Web3.Create.Manager";
 
@@ -24,123 +25,50 @@ interface Props {
     onSubmit: () => Promise<void>;
     isSubmitting: boolean;
     onEditStep: (step: number) => void;
+    creationProgress: {
+        step: number;
+        total: number;
+        status: "idle" | "creating" | "completed" | "error";
+        raffleId: string;
+        error: string | null;
+    };
 }
 
-// 체크리스트 항목들
-const CHECKLIST_ITEMS = [
+interface ValidationResult {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+}
+
+const STEP_NAMES = [
+    "기본 정보",
+    "일정 설정",
+    "래플 설정",
+    "참가비",
+    "상품 설정",
+];
+
+const V2_CREATION_STEPS = [
     {
-        id: "basic_info",
-        label: "기본 정보 입력",
-        description: "제목과 이미지가 설정되었는지 확인",
-        validator: (data: RaffleFormData) =>
-            data.basicInfo.title && data.basicInfo.imageUrl,
-        detailValidator: (data: RaffleFormData) => {
-            const issues = [];
-            if (!data.basicInfo.title)
-                issues.push("제목이 입력되지 않았습니다");
-            if (!data.basicInfo.imageUrl)
-                issues.push("이미지가 선택되지 않았습니다");
-            return issues;
-        },
+        id: "create",
+        title: "래플 생성",
+        description: "기본 래플 정보를 블록체인에 기록",
+        icon: FaRocket,
+        color: "blue",
     },
     {
-        id: "timing",
-        label: "일정 설정",
-        description: "종료일과 추첨일이 올바르게 설정되었는지 확인",
-        validator: (data: RaffleFormData) =>
-            data.timing.startDate &&
-            data.timing.endDate > data.timing.startDate &&
-            (data.timing.instantDraw ||
-                data.timing.drawDate > data.timing.endDate),
-        detailValidator: (data: RaffleFormData) => {
-            const issues = [];
-            if (!data.timing.startDate)
-                issues.push("시작일이 설정되지 않았습니다");
-            if (!data.timing.endDate)
-                issues.push("종료일이 설정되지 않았습니다");
-            else if (data.timing.endDate <= data.timing.startDate)
-                issues.push("종료일이 시작일보다 빠릅니다");
-            if (
-                !data.timing.instantDraw &&
-                (!data.timing.drawDate ||
-                    data.timing.drawDate <= data.timing.endDate)
-            ) {
-                issues.push("추첨일이 종료일보다 빠릅니다");
-            }
-            return issues;
-        },
+        id: "allocate",
+        title: "상품 할당",
+        description: "각 상품을 개별적으로 컨트랙트에 할당",
+        icon: FaGift,
+        color: "yellow",
     },
     {
-        id: "settings",
-        label: "래플 설정",
-        description: "참여 제한과 추첨 방법이 설정되었는지 확인",
-        validator: (data: RaffleFormData) =>
-            (data.settings.participationLimit >= 0 ||
-                data.settings.participationLimit === -1) &&
-            (data.settings.participationLimitPerPlayer >= 0 ||
-                data.settings.participationLimitPerPlayer === -1),
-        detailValidator: (data: RaffleFormData) => {
-            const issues = [];
-            if (data.settings.participationLimit < -1)
-                issues.push(
-                    "최대 참가자 수가 유효하지 않습니다 (-1: 무제한, 0 이상: 제한)"
-                );
-            if (data.settings.participationLimitPerPlayer < -1)
-                issues.push(
-                    "개인 참여 한도가 유효하지 않습니다 (-1: 무제한, 0 이상: 제한)"
-                );
-            return issues;
-        },
-    },
-    {
-        id: "fee",
-        label: "참가비 설정",
-        description: "토큰과 금액이 올바르게 설정되었는지 확인",
-        validator: (data: RaffleFormData) =>
-            data.fee.participationFeeAsset &&
-            parseFloat(data.fee.participationFeeAmount) >= 0,
-        detailValidator: (data: RaffleFormData) => {
-            const issues = [];
-            if (!data.fee.participationFeeAsset)
-                issues.push("참가비 토큰이 선택되지 않았습니다");
-            if (parseFloat(data.fee.participationFeeAmount) < 0)
-                issues.push("참가비 금액이 유효하지 않습니다");
-            return issues;
-        },
-    },
-    {
-        id: "prizes",
-        label: "상품 설정",
-        description: "최소 1개 이상의 상품이 설정되었는지 확인",
-        validator: (data: RaffleFormData) =>
-            data.prizes.length > 0 && data.prizes.every((p) => p.title),
-        detailValidator: (data: RaffleFormData) => {
-            const issues = [];
-            if (data.prizes.length === 0)
-                issues.push("최소 1개 이상의 상품이 필요합니다");
-            data.prizes.forEach((prize, index) => {
-                if (!prize.title)
-                    issues.push(
-                        `상품 ${index + 1}: 제목이 입력되지 않았습니다`
-                    );
-            });
-            return issues;
-        },
-    },
-    {
-        id: "contract",
-        label: "컨트랙트 선택",
-        description: "활성화된 컨트랙트가 선택되었는지 확인",
-        validator: (data: RaffleFormData) =>
-            data.contractId && data.networkId && data.walletAddress,
-        detailValidator: (data: RaffleFormData) => {
-            const issues = [];
-            if (!data.contractId) issues.push("컨트랙트가 선택되지 않았습니다");
-            if (!data.networkId) issues.push("네트워크가 선택되지 않았습니다");
-            if (!data.walletAddress)
-                issues.push("지갑 주소가 연결되지 않았습니다");
-            return issues;
-        },
+        id: "activate",
+        title: "래플 활성화",
+        description: "모든 준비가 완료된 후 래플을 활성화",
+        icon: FaCheck,
+        color: "green",
     },
 ];
 
@@ -149,629 +77,704 @@ export function AdminRafflesWeb3CreateReview({
     onSubmit,
     isSubmitting,
     onEditStep,
+    creationProgress,
 }: Props) {
-    const [showDetails, setShowDetails] = useState<{ [key: string]: boolean }>(
-        {}
-    );
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
-    // 유효성 검증 결과
-    const validationResults = useMemo(() => {
-        return CHECKLIST_ITEMS.map((item) => ({
-            ...item,
-            isValid: item.validator(data),
-            issues: item.detailValidator ? item.detailValidator(data) : [],
-        }));
-    }, [data]);
+    const validateForm = (): ValidationResult => {
+        const errors: string[] = [];
+        const warnings: string[] = [];
 
-    const totalValid = validationResults.filter((r) => r.isValid).length;
-    const isAllValid = totalValid === CHECKLIST_ITEMS.length;
+        if (!data.contractAddress) errors.push("래플 컨트랙트를 선택해주세요.");
+        if (!data.networkId) errors.push("네트워크를 선택해주세요.");
+        if (!data.walletAddress) errors.push("에스크로 지갑을 선택해주세요.");
+        if (!data.basicInfo.title.trim())
+            errors.push("래플 제목을 입력해주세요.");
 
-    // 예상 가스비 계산
-    const gasEstimation = useMemo(() => {
-        const baseGasPrice = 20; // gwei
-        const estimatedGasUsage = 150000; // gas units
-        const gasFeeBERA = (baseGasPrice * estimatedGasUsage) / 1e9;
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (data.timing.startDate <= currentTime) {
+            errors.push("시작 시간은 현재 시간보다 미래여야 합니다.");
+        }
+        if (data.timing.endDate <= data.timing.startDate) {
+            errors.push("종료 시간은 시작 시간보다 늦어야 합니다.");
+        }
+        if (
+            !data.timing.instantDraw &&
+            data.timing.drawDate < data.timing.endDate
+        ) {
+            errors.push("추첨 시간은 종료 시간 이후여야 합니다.");
+        }
+
+        if (data.prizes.length === 0) {
+            errors.push("최소 1개의 상품을 추가해주세요.");
+        }
+
+        if (data.settings.participationLimit <= 0) {
+            warnings.push("참가 제한이 0입니다. 무제한 참가가 허용됩니다.");
+        }
+
+        if (parseFloat(data.fee.participationFeeAmount) === 0) {
+            warnings.push("참가비가 0입니다. 무료 래플로 설정됩니다.");
+        }
+
+        if (data.prizes.some((p) => p.quantity <= 0)) {
+            errors.push("모든 상품의 티켓 수량은 1개 이상이어야 합니다.");
+        }
+
         return {
-            gasUsage: estimatedGasUsage,
-            gasPrice: baseGasPrice,
-            gasFee: gasFeeBERA,
+            isValid: errors.length === 0,
+            errors,
+            warnings,
         };
-    }, []);
+    };
 
-    // 세부 정보 토글
-    const toggleDetails = useCallback((section: string) => {
-        setShowDetails((prev) => ({
-            ...prev,
-            [section]: !prev[section],
-        }));
-    }, []);
+    const validation = validateForm();
+
+    const formatDate = (timestamp: number) => {
+        return new Date(timestamp * 1000).toLocaleString("ko-KR", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    const getEstimatedParticipants = () => {
+        const feeAmount = parseFloat(data.fee.participationFeeAmount) || 0;
+        if (feeAmount === 0) return data.settings.participationLimit;
+
+        const baseParticipation = Math.min(
+            data.settings.participationLimit,
+            1000
+        );
+        const feeImpact = Math.max(0.1, 1 - (feeAmount / 100) * 0.1);
+        return Math.floor(baseParticipation * feeImpact);
+    };
 
     return (
         <div className="space-y-8">
-            {/* 헤더 섹션 */}
-            <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-xl p-6 border border-purple-700/30">
+            {/* 헤더 */}
+            <div className="bg-gradient-to-r from-green-900/30 to-blue-900/30 rounded-xl p-6 border border-green-700/30">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-white flex items-center">
-                        <FaList className="mr-3 text-purple-400" size={20} />
-                        최종 검토 및 배포
+                        <FaCheck className="mr-3 text-green-400" size={20} />
+                        최종 확인 및 V2 래플 생성
                     </h3>
                     <div className="flex items-center gap-2">
-                        <div
-                            className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                                isAllValid
-                                    ? "bg-green-900/50 text-green-400 border-green-700"
-                                    : "bg-yellow-900/50 text-yellow-400 border-yellow-700"
-                            }`}
-                        >
-                            {totalValid}/{CHECKLIST_ITEMS.length} 완료
+                        <div className="px-3 py-1 bg-green-900/50 text-green-400 rounded-full text-xs font-medium border border-green-700">
+                            RafflesV2
+                        </div>
+                        <div className="px-3 py-1 bg-blue-900/50 text-blue-400 rounded-full text-xs font-medium border border-blue-700">
+                            3단계 생성
                         </div>
                     </div>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                    래플 설정을 최종 검토하고 블록체인에 배포합니다. 모든 항목을
-                    확인한 후 배포를 진행해주세요.
+                    설정한 내용을 최종 확인하고 V2 래플을 생성합니다. V2는 3단계
+                    프로세스로 진행됩니다: 래플 생성 → 상품 할당 → 래플 활성화
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* 메인 영역 - 검토 및 체크리스트 */}
-                <div className="xl:col-span-2 space-y-6">
-                    {/* 체크리스트 */}
-                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                        <h4 className="text-lg font-semibold text-white mb-6 flex items-center">
-                            <FaCheckCircle
-                                className="mr-3 text-green-400"
-                                size={16}
-                            />
-                            배포 전 체크리스트
-                        </h4>
+            {/* V2 생성 프로세스 설명 */}
+            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                    <FaRocket className="mr-3 text-purple-400" size={16} />
+                    V2 생성 프로세스
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {V2_CREATION_STEPS.map((step, index) => {
+                        const IconComponent = step.icon;
+                        const isActive =
+                            creationProgress.step >= index + 1 ||
+                            (creationProgress.step === index &&
+                                creationProgress.status !== "idle");
+                        const isCompleted = creationProgress.step > index;
+                        const isError =
+                            creationProgress.status === "error" &&
+                            creationProgress.step === index;
 
-                        <div className="space-y-4">
-                            {validationResults.map((item, index) => (
-                                <div
-                                    key={item.id}
-                                    className={`p-4 rounded-lg border transition-all ${
-                                        item.isValid
-                                            ? "bg-green-900/20 border-green-700"
-                                            : "bg-red-900/20 border-red-700"
-                                    }`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div
-                                                className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                                                    item.isValid
-                                                        ? "bg-green-600"
-                                                        : "bg-red-600"
-                                                }`}
-                                            >
-                                                {item.isValid ? (
-                                                    <FaCheckCircle
-                                                        className="text-white"
-                                                        size={12}
-                                                    />
-                                                ) : (
-                                                    <FaExclamationTriangle
-                                                        className="text-white"
-                                                        size={12}
-                                                    />
-                                                )}
-                                            </div>
-                                            <div className="flex-1">
-                                                <h5 className="font-medium text-white">
-                                                    {item.label}
-                                                </h5>
-                                                <p className="text-sm text-gray-400">
-                                                    {item.description}
-                                                </p>
-                                                {!item.isValid &&
-                                                    item.issues &&
-                                                    item.issues.length > 0 && (
-                                                        <div className="mt-2 space-y-1">
-                                                            {item.issues.map(
-                                                                (
-                                                                    issue,
-                                                                    issueIndex
-                                                                ) => (
-                                                                    <div
-                                                                        key={
-                                                                            issueIndex
-                                                                        }
-                                                                        className="flex items-center gap-1 text-xs text-red-300"
-                                                                    >
-                                                                        <span className="w-1 h-1 bg-red-400 rounded-full"></span>
-                                                                        {issue}
-                                                                    </div>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    )}
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => onEditStep(index)}
-                                            className="p-2 text-gray-400 hover:text-white transition-colors"
-                                            title="수정하기"
-                                        >
-                                            <FaEdit size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 설정 요약 */}
-                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                        <h4 className="text-lg font-semibold text-white mb-6 flex items-center">
-                            <FaEye className="mr-3 text-blue-400" size={16} />
-                            설정 요약
-                        </h4>
-
-                        <div className="space-y-4">
-                            {/* 기본 정보 */}
-                            <div className="bg-gray-750 rounded-lg p-4 border border-gray-600">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h5 className="font-medium text-white flex items-center">
-                                        <FaInfoCircle
-                                            className="mr-2 text-blue-400"
-                                            size={14}
-                                        />
-                                        기본 정보
-                                    </h5>
-                                    <button
-                                        onClick={() => toggleDetails("basic")}
-                                        className="text-gray-400 hover:text-white transition-colors"
+                        return (
+                            <div
+                                key={step.id}
+                                className={`p-4 rounded-lg border transition-all ${
+                                    isError
+                                        ? "bg-red-900/30 border-red-700"
+                                        : isCompleted
+                                        ? "bg-green-900/30 border-green-700"
+                                        : isActive
+                                        ? `bg-${step.color}-900/30 border-${step.color}-700`
+                                        : "bg-gray-750 border-gray-600"
+                                }`}
+                            >
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                            isError
+                                                ? "bg-red-600"
+                                                : isCompleted
+                                                ? "bg-green-600"
+                                                : isActive
+                                                ? `bg-${step.color}-600`
+                                                : "bg-gray-600"
+                                        }`}
                                     >
-                                        <FaEye size={12} />
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-gray-300">
-                                            제목:
-                                        </span>
-                                        <p className="text-white font-medium">
-                                            {data.basicInfo.title || "미설정"}
-                                        </p>
+                                        {isError ? (
+                                            <FaExclamationTriangle
+                                                className="text-white"
+                                                size={14}
+                                            />
+                                        ) : isCompleted ? (
+                                            <FaCheck
+                                                className="text-white"
+                                                size={14}
+                                            />
+                                        ) : isActive ? (
+                                            <FaSpinner
+                                                className="text-white animate-spin"
+                                                size={14}
+                                            />
+                                        ) : (
+                                            <IconComponent
+                                                className="text-white"
+                                                size={14}
+                                            />
+                                        )}
                                     </div>
-                                    <div>
-                                        <span className="text-gray-300">
-                                            설명:
-                                        </span>
-                                        <p className="text-white font-medium">
-                                            {data.basicInfo.description
-                                                ? `${data.basicInfo.description.slice(
-                                                      0,
-                                                      30
-                                                  )}...`
-                                                : "미설정"}
-                                        </p>
-                                    </div>
-                                </div>
-                                {showDetails.basic && (
-                                    <div className="mt-3 pt-3 border-t border-gray-600 text-sm">
-                                        <div className="grid grid-cols-1 gap-2">
-                                            <div>
-                                                <span className="text-gray-300">
-                                                    이미지:
-                                                </span>
-                                                <p className="text-blue-400 break-all">
-                                                    {data.basicInfo.imageUrl ||
-                                                        "미설정"}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className="text-gray-300">
-                                                    아이콘:
-                                                </span>
-                                                <p className="text-blue-400 break-all">
-                                                    {data.basicInfo.iconUrl ||
-                                                        "미설정"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* 일정 */}
-                            <div className="bg-gray-750 rounded-lg p-4 border border-gray-600">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h5 className="font-medium text-white flex items-center">
-                                        <FaCalendarAlt
-                                            className="mr-2 text-green-400"
-                                            size={14}
-                                        />
-                                        일정
-                                    </h5>
-                                    <button
-                                        onClick={() => toggleDetails("timing")}
-                                        className="text-gray-400 hover:text-white transition-colors"
+                                    <span
+                                        className={`font-medium ${
+                                            isError
+                                                ? "text-red-400"
+                                                : isCompleted
+                                                ? "text-green-400"
+                                                : isActive
+                                                ? `text-${step.color}-400`
+                                                : "text-gray-400"
+                                        }`}
                                     >
-                                        <FaEye size={12} />
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-gray-300">
-                                            시작:
-                                        </span>
-                                        <p className="text-white font-medium">
-                                            {new Date(
-                                                data.timing.startDate * 1000
-                                            ).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-300">
-                                            종료:
-                                        </span>
-                                        <p className="text-white font-medium">
-                                            {new Date(
-                                                data.timing.endDate * 1000
-                                            ).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-300">
-                                            추첨:
-                                        </span>
-                                        <p
-                                            className={`font-medium ${
-                                                data.timing.instantDraw
-                                                    ? "text-yellow-400"
-                                                    : "text-purple-400"
-                                            }`}
-                                        >
-                                            {data.timing.instantDraw
-                                                ? "즉시"
-                                                : "예약"}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 참여 설정 */}
-                            <div className="bg-gray-750 rounded-lg p-4 border border-gray-600">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h5 className="font-medium text-white flex items-center">
-                                        <FaCogs
-                                            className="mr-2 text-purple-400"
-                                            size={14}
-                                        />
-                                        참여 설정
-                                    </h5>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-gray-300">
-                                            최대 참가자:
-                                        </span>
-                                        <p
-                                            className={`font-medium ${
-                                                data.settings
-                                                    .participationLimit === -1
-                                                    ? "text-green-400"
-                                                    : "text-white"
-                                            }`}
-                                        >
-                                            {data.settings
-                                                .participationLimit === -1
-                                                ? "무제한"
-                                                : `${data.settings.participationLimit.toLocaleString()}명`}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-300">
-                                            개인 한도:
-                                        </span>
-                                        <p
-                                            className={`font-medium ${
-                                                data.settings
-                                                    .participationLimitPerPlayer ===
-                                                -1
-                                                    ? "text-green-400"
-                                                    : "text-white"
-                                            }`}
-                                        >
-                                            {data.settings
-                                                .participationLimitPerPlayer ===
-                                            -1
-                                                ? "무제한"
-                                                : `${data.settings.participationLimitPerPlayer}개`}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-300">
-                                            추첨 방법:
-                                        </span>
-                                        <p
-                                            className={`font-medium ${
-                                                data.settings.dynamicWeight
-                                                    ? "text-purple-400"
-                                                    : "text-blue-400"
-                                            }`}
-                                        >
-                                            {data.settings.dynamicWeight
-                                                ? "동적"
-                                                : "랜덤"}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 참가비 */}
-                            <div className="bg-gray-750 rounded-lg p-4 border border-gray-600">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h5 className="font-medium text-white flex items-center">
-                                        <FaCoins
-                                            className="mr-2 text-yellow-400"
-                                            size={14}
-                                        />
-                                        참가비
-                                    </h5>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <span className="text-gray-300">
-                                            토큰:
-                                        </span>
-                                        <p className="text-white font-medium">
-                                            {data.fee.participationFeeAsset ||
-                                                "미설정"}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-300">
-                                            금액:
-                                        </span>
-                                        <p
-                                            className={`font-medium ${
-                                                parseFloat(
-                                                    data.fee
-                                                        .participationFeeAmount
-                                                ) === 0
-                                                    ? "text-green-400"
-                                                    : "text-yellow-400"
-                                            }`}
-                                        >
-                                            {parseFloat(
-                                                data.fee.participationFeeAmount
-                                            ) === 0
-                                                ? "무료"
-                                                : `${data.fee.participationFeeAmount} ${data.fee.participationFeeAsset}`}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* 상품 */}
-                            <div className="bg-gray-750 rounded-lg p-4 border border-gray-600">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h5 className="font-medium text-white flex items-center">
-                                        <FaGift
-                                            className="mr-2 text-pink-400"
-                                            size={14}
-                                        />
-                                        상품 ({data.prizes.length}개)
-                                    </h5>
-                                    <button
-                                        onClick={() => toggleDetails("prizes")}
-                                        className="text-gray-400 hover:text-white transition-colors"
-                                    >
-                                        <FaEye size={12} />
-                                    </button>
-                                </div>
-                                {data.prizes.length > 0 ? (
-                                    <div className="grid grid-cols-1 gap-2 text-sm">
-                                        {data.prizes
-                                            .slice(
-                                                0,
-                                                showDetails.prizes
-                                                    ? data.prizes.length
-                                                    : 3
-                                            )
-                                            .map((prize, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="flex justify-between"
-                                                >
-                                                    <span className="text-gray-300">
-                                                        {prize.title}
-                                                    </span>
-                                                    <span className="text-white font-medium">
-                                                        {prize.prizeQuantity}개
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        {!showDetails.prizes &&
-                                            data.prizes.length > 3 && (
-                                                <p className="text-gray-400 text-xs">
-                                                    +{data.prizes.length - 3}개
-                                                    더보기
-                                                </p>
-                                            )}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-400 text-sm">
-                                        상품이 설정되지 않았습니다
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 사이드바 - 배포 상태 및 액션 */}
-                <div className="space-y-6">
-                    {/* 배포 준비 상태 */}
-                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                        <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
-                            <FaRocket
-                                className="mr-3 text-orange-400"
-                                size={16}
-                            />
-                            배포 준비 상태
-                        </h4>
-
-                        <div className="space-y-4">
-                            <div className="text-center">
-                                <div
-                                    className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center ${
-                                        isAllValid
-                                            ? "bg-green-600"
-                                            : "bg-yellow-600"
-                                    }`}
-                                >
-                                    {isAllValid ? (
-                                        <FaCheckCircle
-                                            className="text-white"
-                                            size={24}
-                                        />
-                                    ) : (
-                                        <FaClock
-                                            className="text-white"
-                                            size={24}
-                                        />
-                                    )}
-                                </div>
-                                <h5
-                                    className={`font-semibold ${
-                                        isAllValid
-                                            ? "text-green-400"
-                                            : "text-yellow-400"
-                                    }`}
-                                >
-                                    {isAllValid
-                                        ? "배포 준비 완료"
-                                        : "설정 확인 필요"}
-                                </h5>
-                                <p className="text-gray-400 text-sm mt-1">
-                                    {isAllValid
-                                        ? "모든 설정이 완료되었습니다"
-                                        : `${
-                                              CHECKLIST_ITEMS.length -
-                                              totalValid
-                                          }개 항목 확인 필요`}
-                                </p>
-                            </div>
-
-                            <div className="border-t border-gray-700 pt-4">
-                                <div className="space-y-3 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-300">
-                                            예상 가스비:
-                                        </span>
-                                        <span className="text-white font-medium">
-                                            {gasEstimation.gasFee.toFixed(6)}{" "}
-                                            BERA
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-300">
-                                            가스 한도:
-                                        </span>
-                                        <span className="text-white font-medium">
-                                            {gasEstimation.gasUsage.toLocaleString()}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-300">
-                                            네트워크:
-                                        </span>
-                                        <span className="text-blue-400 font-medium">
-                                            {data.networkId || "미선택"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 배포 액션 */}
-                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                        <button
-                            onClick={onSubmit}
-                            disabled={!isAllValid || isSubmitting}
-                            className={`w-full py-4 px-6 rounded-lg font-semibold transition-all flex items-center justify-center gap-3 ${
-                                !isAllValid || isSubmitting
-                                    ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                                    : "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                            }`}
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <FaSpinner
-                                        className="animate-spin"
-                                        size={16}
-                                    />
-                                    배포 중...
-                                </>
-                            ) : (
-                                <>
-                                    <FaRocket size={16} />
-                                    래플 배포하기
-                                </>
-                            )}
-                        </button>
-
-                        {!isAllValid && (
-                            <p className="text-yellow-400 text-xs mt-3 text-center">
-                                모든 설정을 완료한 후 배포할 수 있습니다
-                            </p>
-                        )}
-
-                        {isSubmitting && (
-                            <div className="mt-4 p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <FaSpinner
-                                        className="animate-spin text-blue-400"
-                                        size={14}
-                                    />
-                                    <span className="text-blue-400 font-medium text-sm">
-                                        배포 진행 중
+                                        {index + 1}. {step.title}
                                     </span>
                                 </div>
-                                <p className="text-blue-300 text-xs">
-                                    트랜잭션이 블록체인에 전송되고 있습니다.
-                                    완료까지 1-2분 소요됩니다.
+                                <p className="text-sm text-gray-400 mb-2">
+                                    {step.description}
                                 </p>
+
+                                {/* 추가 진행 정보 */}
+                                {isError && (
+                                    <div className="text-xs text-red-400 mt-1">
+                                        생성 실패: {creationProgress.error}
+                                    </div>
+                                )}
                             </div>
-                        )}
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                {/* 설정 요약 */}
+                <div className="xl:col-span-2 space-y-6">
+                    {/* 유효성 검사 */}
+                    {(!validation.isValid ||
+                        validation.warnings.length > 0) && (
+                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                                <FaExclamationTriangle
+                                    className="mr-3 text-yellow-400"
+                                    size={16}
+                                />
+                                검증 결과
+                            </h4>
+
+                            {validation.errors.length > 0 && (
+                                <div className="mb-4">
+                                    <h5 className="text-red-400 font-medium mb-2">
+                                        오류 ({validation.errors.length})
+                                    </h5>
+                                    <div className="space-y-2">
+                                        {validation.errors.map(
+                                            (error, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="flex items-start gap-2 text-sm"
+                                                >
+                                                    <FaExclamationTriangle
+                                                        className="text-red-400 mt-0.5 flex-shrink-0"
+                                                        size={12}
+                                                    />
+                                                    <span className="text-red-300">
+                                                        {error}
+                                                    </span>
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {validation.warnings.length > 0 && (
+                                <div>
+                                    <h5 className="text-yellow-400 font-medium mb-2">
+                                        주의사항 ({validation.warnings.length})
+                                    </h5>
+                                    <div className="space-y-2">
+                                        {validation.warnings.map(
+                                            (warning, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="flex items-start gap-2 text-sm"
+                                                >
+                                                    <FaInfoCircle
+                                                        className="text-yellow-400 mt-0.5 flex-shrink-0"
+                                                        size={12}
+                                                    />
+                                                    <span className="text-yellow-300">
+                                                        {warning}
+                                                    </span>
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 기본 정보 요약 */}
+                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-white flex items-center">
+                                <FaGlobe
+                                    className="mr-3 text-blue-400"
+                                    size={16}
+                                />
+                                기본 정보
+                            </h4>
+                            <button
+                                onClick={() => onEditStep(0)}
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                                <FaEdit size={14} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <span className="text-gray-400 text-sm">
+                                        래플 제목
+                                    </span>
+                                    <p className="text-white font-medium">
+                                        {data.basicInfo.title}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 text-sm">
+                                        설명
+                                    </span>
+                                    <p className="text-white text-sm">
+                                        {data.basicInfo.description ||
+                                            "설명 없음"}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <span className="text-gray-400 text-sm">
+                                        네트워크
+                                    </span>
+                                    <p className="text-white font-medium">
+                                        {data.networkId}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 text-sm">
+                                        컨트랙트
+                                    </span>
+                                    <p className="text-white font-mono text-sm">
+                                        {data.contractAddress}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* 도움말 */}
+                    {/* 일정 및 설정 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-white flex items-center">
+                                    <FaClock
+                                        className="mr-3 text-orange-400"
+                                        size={16}
+                                    />
+                                    일정
+                                </h4>
+                                <button
+                                    onClick={() => onEditStep(1)}
+                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    <FaEdit size={14} />
+                                </button>
+                            </div>
+                            <div className="space-y-3 text-sm">
+                                <div>
+                                    <span className="text-gray-400">시작:</span>
+                                    <span className="text-white ml-2">
+                                        {formatDate(data.timing.startDate)}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">종료:</span>
+                                    <span className="text-white ml-2">
+                                        {formatDate(data.timing.endDate)}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">추첨:</span>
+                                    <span className="text-white ml-2">
+                                        {data.timing.instantDraw
+                                            ? "즉시 추첨"
+                                            : formatDate(data.timing.drawDate)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-white flex items-center">
+                                    <FaCog
+                                        className="mr-3 text-purple-400"
+                                        size={16}
+                                    />
+                                    설정
+                                </h4>
+                                <button
+                                    onClick={() => onEditStep(2)}
+                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    <FaEdit size={14} />
+                                </button>
+                            </div>
+                            <div className="space-y-3 text-sm">
+                                <div>
+                                    <span className="text-gray-400">
+                                        참가 제한:
+                                    </span>
+                                    <span className="text-white ml-2">
+                                        {data.settings.participationLimit === -1
+                                            ? "무제한"
+                                            : `${data.settings.participationLimit}명`}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">
+                                        개인 제한:
+                                    </span>
+                                    <span className="text-white ml-2">
+                                        {data.settings
+                                            .participationLimitPerPlayer === -1
+                                            ? "무제한"
+                                            : `${data.settings.participationLimitPerPlayer}회`}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">
+                                        중복 당첨:
+                                    </span>
+                                    <span className="text-white ml-2">
+                                        {data.settings.allowMultipleWins
+                                            ? "허용"
+                                            : "불허용"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">
+                                        동적 가중치:
+                                    </span>
+                                    <span className="text-white ml-2">
+                                        {data.settings.dynamicWeight
+                                            ? "활성화"
+                                            : "비활성화"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 참가비 및 상품 */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-white flex items-center">
+                                    <FaCoins
+                                        className="mr-3 text-yellow-400"
+                                        size={16}
+                                    />
+                                    참가비
+                                </h4>
+                                <button
+                                    onClick={() => onEditStep(3)}
+                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    <FaEdit size={14} />
+                                </button>
+                            </div>
+                            <div className="space-y-3 text-sm">
+                                <div>
+                                    <span className="text-gray-400">에셋:</span>
+                                    <span className="text-white ml-2">
+                                        {data.fee.participationFeeAsset}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">금액:</span>
+                                    <span className="text-white ml-2">
+                                        {data.fee.participationFeeAmount}{" "}
+                                        {data.fee.participationFeeAsset}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">타입:</span>
+                                    <span className="text-cyan-400 ml-2">
+                                        오프체인 에셋
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-lg font-semibold text-white flex items-center">
+                                    <FaGift
+                                        className="mr-3 text-green-400"
+                                        size={16}
+                                    />
+                                    상품 요약
+                                </h4>
+                                <button
+                                    onClick={() => onEditStep(4)}
+                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    <FaEdit size={14} />
+                                </button>
+                            </div>
+                            <div className="space-y-3 text-sm">
+                                <div>
+                                    <span className="text-gray-400">
+                                        총 상품:
+                                    </span>
+                                    <span className="text-white ml-2">
+                                        {data.prizes.length}개
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400">
+                                        총 수량:
+                                    </span>
+                                    <span className="text-white ml-2">
+                                        {data.prizes.reduce(
+                                            (sum, p) => sum + p.quantity,
+                                            0
+                                        )}
+                                        개
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 상세 상품 목록 */}
+                    {showAdvanced && (
+                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                            <h4 className="text-lg font-semibold text-white mb-4">
+                                상품 상세 목록
+                            </h4>
+                            <div className="space-y-3">
+                                {data.prizes.map((prize, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center gap-4 p-3 bg-gray-750 rounded-lg border border-gray-600"
+                                    >
+                                        {prize.imageUrl && (
+                                            <img
+                                                src={prize.imageUrl}
+                                                alt={prize.title}
+                                                className="w-12 h-12 object-cover rounded border border-gray-600"
+                                            />
+                                        )}
+                                        <div className="flex-1">
+                                            <div className="font-medium text-white">
+                                                {prize.title}
+                                            </div>
+                                            <div className="text-sm text-gray-400">
+                                                수량: {prize.quantity}개 |
+                                                희귀도: {prize.rarity} | 순서:{" "}
+                                                {prize.order}
+                                            </div>
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                            {prize.userValue
+                                                ? `${prize.userValue.toLocaleString()}원`
+                                                : "가치 미설정"}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* 사이드바 - 분석 및 작업 */}
+                <div className="space-y-6">
+                    {/* 래플 분석 */}
                     <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
                         <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
+                            <FaEye className="mr-3 text-cyan-400" size={16} />
+                            래플 분석
+                        </h4>
+                        <div className="space-y-4">
+                            <div className="p-3 bg-gray-750 rounded-lg border border-gray-600">
+                                <div className="text-sm text-gray-400 mb-1">
+                                    예상 참여자
+                                </div>
+                                <div className="text-xl font-bold text-white">
+                                    {getEstimatedParticipants().toLocaleString()}
+                                    명
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    참가비와 제한 기준
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-gray-750 rounded-lg border border-gray-600">
+                                <div className="text-sm text-gray-400 mb-1">
+                                    예상 수익
+                                </div>
+                                <div className="text-xl font-bold text-green-400">
+                                    {(
+                                        getEstimatedParticipants() *
+                                        parseFloat(
+                                            data.fee.participationFeeAmount ||
+                                                "0"
+                                        )
+                                    ).toLocaleString()}{" "}
+                                    {data.fee.participationFeeAsset}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    운영비 차감 전
+                                </div>
+                            </div>
+
+                            <div className="p-3 bg-gray-750 rounded-lg border border-gray-600">
+                                <div className="text-sm text-gray-400 mb-1">
+                                    당첨 확률
+                                </div>
+                                <div className="text-xl font-bold text-purple-400">
+                                    {(
+                                        (data.prizes.reduce(
+                                            (sum, p) => sum + p.quantity,
+                                            0
+                                        ) /
+                                            Math.max(
+                                                getEstimatedParticipants(),
+                                                1
+                                            )) *
+                                        100
+                                    ).toFixed(2)}
+                                    %
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    총 상품 기준
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 작업 버튼 */}
+                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <h4 className="text-lg font-semibold text-white mb-4">
+                            작업
+                        </h4>
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                className="w-full p-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                            >
+                                {showAdvanced ? "간단히 보기" : "상세히 보기"}
+                            </button>
+
+                            <button
+                                onClick={onSubmit}
+                                disabled={!validation.isValid}
+                                className={`w-full p-3 rounded-lg transition-colors text-sm font-medium ${
+                                    !validation.isValid ||
+                                    isSubmitting ||
+                                    creationProgress.status !== "idle"
+                                        ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                                        : "bg-green-600 hover:bg-green-700 text-white"
+                                }`}
+                            >
+                                {isSubmitting ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <FaSpinner
+                                            className="animate-spin"
+                                            size={14}
+                                        />
+                                        V2 래플 생성 중...
+                                    </div>
+                                ) : creationProgress.status !== "idle" ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <FaSpinner
+                                            className="animate-spin"
+                                            size={14}
+                                        />
+                                        진행 중...
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <FaRocket size={14} />
+                                        V2 래플 생성
+                                    </div>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* V2 특징 안내 */}
+                    <div className="bg-gradient-to-br from-purple-900/30 to-blue-900/30 rounded-xl p-6 border border-purple-700/30">
+                        <h4 className="text-lg font-semibold text-white mb-3 flex items-center">
                             <FaInfoCircle
-                                className="mr-3 text-blue-400"
+                                className="mr-3 text-purple-400"
                                 size={16}
                             />
-                            배포 안내
+                            V2 특징
                         </h4>
-
-                        <div className="space-y-3 text-sm text-gray-300">
-                            <div className="flex items-start gap-2">
-                                <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>
-                                    배포 후에는 래플 설정을 변경할 수 없습니다
-                                </p>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                <span className="text-purple-300">
+                                    역할 기반 접근 제어
+                                </span>
                             </div>
-                            <div className="flex items-start gap-2">
-                                <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>
-                                    트랜잭션 완료 후 래플이 자동으로
-                                    활성화됩니다
-                                </p>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                <span className="text-purple-300">
+                                    컨트랙트 일시정지 지원
+                                </span>
                             </div>
-                            <div className="flex items-start gap-2">
-                                <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>가스비는 배포 시 지갑에서 자동 차감됩니다</p>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                <span className="text-purple-300">
+                                    배치 추첨 시스템
+                                </span>
                             </div>
-                            <div className="flex items-start gap-2">
-                                <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                                <p>배포 상태는 실시간으로 추적할 수 있습니다</p>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                <span className="text-purple-300">
+                                    3단계 안전한 생성
+                                </span>
                             </div>
                         </div>
                     </div>

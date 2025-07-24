@@ -27,6 +27,33 @@ interface RaffleOnchainTimingProps {
     };
 }
 
+const CONTAINER_VARIANTS = {
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+    },
+};
+
+const ITEM_VARIANTS = {
+    hidden: { opacity: 0, x: -20 },
+    visible: {
+        opacity: 1,
+        x: 0,
+    },
+};
+
+const formatDateTime = (date: Date) => {
+    return date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
 export default memo(function RaffleOnchainTiming({
     data,
 }: RaffleOnchainTimingProps) {
@@ -66,7 +93,7 @@ export default memo(function RaffleOnchainTiming({
             drawDate: drawDate ? new Date(Number(drawDate) * 1000) : null,
             instantDraw: data.instantDraw,
         };
-    }, [data]);
+    }, [data?.instantDraw, data?.startDate, data?.endDate, data?.drawDate]);
 
     const updateTimer = useCallback(() => {
         if (!timingInfo?.endDate || !timingInfo?.startDate) return;
@@ -102,42 +129,26 @@ export default memo(function RaffleOnchainTiming({
         } else {
             setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         }
-    }, [timingInfo?.endDate, timingInfo?.startDate, timingInfo?.status]);
+    }, [
+        timingInfo?.endDate?.getTime(),
+        timingInfo?.startDate?.getTime(),
+        timingInfo?.status,
+    ]);
 
     useEffect(() => {
-        if (!timingInfo?.endDate || !timingInfo?.startDate) return;
+        const endTime = timingInfo?.endDate?.getTime();
+        const startTime = timingInfo?.startDate?.getTime();
+
+        if (!endTime || !startTime) return;
 
         updateTimer();
         const interval = setInterval(updateTimer, 1000);
 
         return () => clearInterval(interval);
-    }, [updateTimer, timingInfo?.endDate, timingInfo?.startDate]);
+    }, [updateTimer]);
 
-    const containerVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, y: 30, scale: 0.95 },
-            visible: {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-            },
-        }),
-        []
-    );
-
-    const itemVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, x: -20 },
-            visible: {
-                opacity: 1,
-                x: 0,
-            },
-        }),
-        []
-    );
-
-    const renderLoadingState = useCallback(
-        () => (
+    if (!data || !timingInfo) {
+        return (
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -185,22 +196,7 @@ export default memo(function RaffleOnchainTiming({
                     </span>
                 </div>
             </motion.div>
-        ),
-        []
-    );
-
-    const formatDateTime = useCallback((date: Date) => {
-        return date.toLocaleString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    }, []);
-
-    if (!data || !timingInfo) {
-        return renderLoadingState();
+        );
     }
 
     const shouldShowCountdown =
@@ -212,7 +208,7 @@ export default memo(function RaffleOnchainTiming({
 
     return (
         <motion.div
-            variants={containerVariants}
+            variants={CONTAINER_VARIANTS}
             initial="hidden"
             animate="visible"
             transition={{
@@ -293,7 +289,7 @@ export default memo(function RaffleOnchainTiming({
 
             <div className="relative z-10">
                 <motion.div
-                    variants={itemVariants}
+                    variants={ITEM_VARIANTS}
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className={cn(
                         "flex items-center justify-between mb-4",
@@ -343,7 +339,7 @@ export default memo(function RaffleOnchainTiming({
 
                 {shouldShowCountdown && (
                     <motion.div
-                        variants={itemVariants}
+                        variants={ITEM_VARIANTS}
                         transition={{
                             duration: 0.6,
                             ease: "easeOut",
@@ -411,7 +407,7 @@ export default memo(function RaffleOnchainTiming({
 
                 <div className="space-y-4">
                     <motion.div
-                        variants={itemVariants}
+                        variants={ITEM_VARIANTS}
                         transition={{
                             duration: 0.6,
                             ease: "easeOut",
@@ -458,7 +454,7 @@ export default memo(function RaffleOnchainTiming({
                     </motion.div>
 
                     <motion.div
-                        variants={itemVariants}
+                        variants={ITEM_VARIANTS}
                         transition={{
                             duration: 0.6,
                             ease: "easeOut",
@@ -505,7 +501,7 @@ export default memo(function RaffleOnchainTiming({
                     </motion.div>
 
                     <motion.div
-                        variants={itemVariants}
+                        variants={ITEM_VARIANTS}
                         transition={{
                             duration: 0.6,
                             ease: "easeOut",

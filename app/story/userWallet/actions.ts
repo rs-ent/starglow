@@ -562,59 +562,60 @@ export async function getDefaultUserWalletAddress(
     }
 
     try {
-        const result = await prisma.$transaction(async (tx) => {
-            let userId = input.userId;
+        let userId = input.userId;
 
-            if (!userId && input.playerId) {
-                const player = await tx.player.findUnique({
-                    where: { id: input.playerId },
-                    select: { userId: true },
-                });
+        if (!userId && input.playerId) {
+            const player = await prisma.player.findUnique({
+                cacheStrategy: getCacheStrategy("tenMinutes"),
+                where: { id: input.playerId },
+                select: { userId: true },
+            });
 
-                if (!player || !player.userId) {
-                    return null;
-                }
-
-                userId = player.userId;
-            }
-
-            if (!userId) {
+            if (!player || !player.userId) {
                 return null;
             }
 
-            const wallet = await tx.wallet.findFirst({
-                cacheStrategy: getCacheStrategy("fiveMinutes"),
-                where: { userId, default: true },
-                select: { address: true },
-            });
+            userId = player.userId;
+        }
 
-            if (wallet) {
-                return wallet.address;
-            }
+        if (!userId) {
+            return null;
+        }
 
-            const wallets = await tx.wallet.findMany({
-                cacheStrategy: getCacheStrategy("fiveMinutes"),
-                where: { userId },
-                orderBy: {
-                    lastAccessedAt: "desc",
-                },
-                select: { id: true, address: true },
-                take: 1,
-            });
-
-            if (wallets.length === 0) {
-                return null;
-            }
-
-            await tx.wallet.update({
-                where: { id: wallets[0].id },
-                data: { default: true },
-            });
-
-            return wallets[0].address;
+        const defaultWallet = await prisma.wallet.findFirst({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
+            where: { userId, default: true },
+            select: { address: true },
         });
 
-        return result;
+        if (defaultWallet) {
+            return defaultWallet.address;
+        }
+
+        const recentWallet = await prisma.wallet.findFirst({
+            cacheStrategy: getCacheStrategy("fiveMinutes"),
+            where: { userId },
+            orderBy: { lastAccessedAt: "desc" },
+            select: { id: true, address: true },
+        });
+
+        if (!recentWallet) {
+            return null;
+        }
+
+        prisma.wallet
+            .update({
+                where: { id: recentWallet.id },
+                data: { default: true },
+            })
+            .catch((error) => {
+                console.error(
+                    "Failed to update default wallet in background:",
+                    error
+                );
+            });
+
+        return recentWallet.address;
     } catch (error) {
         console.error("Failed to get default user wallet address:", error);
         return null;

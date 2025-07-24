@@ -13,8 +13,8 @@ import {
     TierHeader,
     TierContainer,
     getTierInfo,
-    type PrizeData,
 } from "./Raffle.Onchain.Prizes.Tier";
+import type { PrizeData } from "@/app/actions/raffles/onchain/actions-write-v2";
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { BorderBeam } from "@/components/magicui/border-beam";
@@ -23,6 +23,23 @@ import { Particles } from "@/components/magicui/particles";
 interface RaffleOnchainPrizesProps {
     data?: PrizeData[];
 }
+
+const CONTAINER_VARIANTS = {
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+    },
+};
+
+const ITEM_VARIANTS = {
+    hidden: { opacity: 0, x: -20 },
+    visible: {
+        opacity: 1,
+        x: 0,
+    },
+};
 
 const SparkleIcon = memo(({ className }: { className?: string }) => (
     <div className={cn("relative", className)}>
@@ -129,45 +146,25 @@ PrizesEmptyState.displayName = "PrizesEmptyState";
 export default memo(function RaffleOnchainPrizes({
     data,
 }: RaffleOnchainPrizesProps) {
-    const prizeAnalysis = useMemo(() => {
-        if (!data || data.length === 0) return null;
-        return groupPrizesByTier(data);
-    }, [data]);
+    const { prizeAnalysis, totalQuantity } = useMemo(() => {
+        if (!data || data.length === 0) {
+            return {
+                prizeAnalysis: null,
+                totalQuantity: 0,
+            };
+        }
 
-    const totalQuantity = useMemo(() => {
-        return data?.reduce(
-            (acc, curr) =>
-                acc +
-                Number(
-                    Number(curr.registeredTicketQuantity) -
-                        Number(curr.pickedTicketQuantity)
-                ),
+        const analysis = groupPrizesByTier(data);
+        const total = data.reduce(
+            (acc, curr) => acc + Number(curr.quantity),
             0
         );
-    }, [data]);
 
-    const containerVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, y: 30, scale: 0.95 },
-            visible: {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-            },
-        }),
-        []
-    );
-
-    const itemVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, x: -20 },
-            visible: {
-                opacity: 1,
-                x: 0,
-            },
-        }),
-        []
-    );
+        return {
+            prizeAnalysis: analysis,
+            totalQuantity: total,
+        };
+    }, [data?.length, data]);
 
     if (!data) {
         return <PrizesLoadingState />;
@@ -179,7 +176,7 @@ export default memo(function RaffleOnchainPrizes({
 
     return (
         <motion.div
-            variants={containerVariants}
+            variants={CONTAINER_VARIANTS}
             initial="hidden"
             animate="visible"
             transition={{
@@ -259,7 +256,7 @@ export default memo(function RaffleOnchainPrizes({
 
             <div className="relative z-10">
                 <motion.div
-                    variants={itemVariants}
+                    variants={ITEM_VARIANTS}
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className={cn(
                         "flex items-center justify-between mb-8",

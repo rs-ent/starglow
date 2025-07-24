@@ -32,6 +32,7 @@ interface RaffleOnchainHeroProps {
             iconUrl?: string;
         };
         participationFeeAmount?: string;
+        uniqueParticipants?: string;
     };
     contractAddress?: string;
     raffleId?: string;
@@ -248,7 +249,7 @@ export default memo(function RaffleOnchainHero({
                                             getResponsiveClass(5).textClass
                                         )}
                                     >
-                                        Remain Tickets
+                                        Remaining Seats
                                     </span>
                                     <span
                                         className={cn(
@@ -261,7 +262,7 @@ export default memo(function RaffleOnchainHero({
                                                 0
                                         ) -
                                             safeBigIntToNumber(
-                                                listCardInfo?.participationCount ||
+                                                listCardInfo?.uniqueParticipants ||
                                                     0
                                             )}
                                     </span>

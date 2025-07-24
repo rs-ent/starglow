@@ -4,13 +4,7 @@
 
 import { memo } from "react";
 import { motion } from "framer-motion";
-import {
-    Activity,
-    CheckCircle,
-    XCircle,
-    Trophy,
-    Users,
-} from "lucide-react";
+import { Activity, CheckCircle, XCircle, Trophy, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils/tailwind";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
@@ -180,30 +174,16 @@ export default memo(function RaffleOnchainStatus({
     if (!data) {
         return <StatusErrorState />;
     }
+
     const totalParticipants = data.drawnParticipantCount
         ? Number(data.drawnParticipantCount)
         : 0;
 
-    const getStatusInfo = () => {
-        if (data.isDrawn) {
-            return {
-                value: "COMPLETED",
-                colorScheme: "info" as const,
-            };
-        } else if (data.active) {
-            return {
-                value: "ACTIVE",
-                colorScheme: "success" as const,
-            };
-        } else {
-            return {
-                value: "INACTIVE",
-                colorScheme: "error" as const,
-            };
-        }
-    };
-
-    const statusInfo = getStatusInfo();
+    const statusInfo = data.isDrawn
+        ? { value: "COMPLETED", colorScheme: "info" as const }
+        : data.active
+        ? { value: "ACTIVE", colorScheme: "success" as const }
+        : { value: "INACTIVE", colorScheme: "error" as const };
 
     return (
         <div

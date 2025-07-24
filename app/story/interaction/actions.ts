@@ -7,6 +7,88 @@ import { formatUnits, parseUnits } from "viem";
 import { prisma } from "@/lib/prisma/client";
 import { fetchPublicClient, fetchWalletClient } from "../client";
 
+// 🚀 가스 추정 캐시 (5분 TTL)
+interface GasCacheItem {
+    result: GasEstimationResult;
+    timestamp: number;
+}
+
+class GasEstimationCache {
+    private cache = new Map<string, GasCacheItem>();
+    private ttl = 5 * 60 * 1000; // 5분
+
+    private createKey(input: GasEstimationInput): string {
+        const {
+            networkId,
+            contractAddress,
+            functionName,
+            args = [],
+            value = 0n,
+            gasMultiplier = 1.3,
+            priorityFeeMultiplier = 1.1,
+        } = input;
+
+        // 🔧 BigInt 안전 직렬화: BigInt를 문자열로 변환
+        const safeStringify = (obj: any): string => {
+            return JSON.stringify(obj, (key, val) =>
+                typeof val === "bigint" ? val.toString() + "n" : val
+            );
+        };
+
+        // 동일한 함수 호출에 대한 캐시 키 생성
+        return [
+            networkId,
+            contractAddress,
+            functionName,
+            safeStringify(args),
+            value.toString(),
+            gasMultiplier.toString(),
+            priorityFeeMultiplier.toString(),
+        ].join(":");
+    }
+
+    get(input: GasEstimationInput): GasEstimationResult | null {
+        const key = this.createKey(input);
+        const item = this.cache.get(key);
+
+        if (!item) return null;
+
+        // TTL 체크
+        if (Date.now() - item.timestamp > this.ttl) {
+            this.cache.delete(key);
+            return null;
+        }
+
+        return item.result;
+    }
+
+    set(input: GasEstimationInput, result: GasEstimationResult): void {
+        const key = this.createKey(input);
+        this.cache.set(key, {
+            result,
+            timestamp: Date.now(),
+        });
+    }
+
+    // 캐시 정리 (10분마다)
+    cleanup(): void {
+        const now = Date.now();
+        for (const [key, item] of this.cache.entries()) {
+            if (now - item.timestamp > this.ttl) {
+                this.cache.delete(key);
+            }
+        }
+    }
+}
+
+// 글로벌 가스 추정 캐시 인스턴스
+const gasEstimationCache = new GasEstimationCache();
+
+// 주기적 캐시 정리 (10분마다)
+setInterval(() => {
+    gasEstimationCache.cleanup();
+}, 10 * 60 * 1000);
+
 import { getOwners } from "../nft/actions";
 
 import type { Story_spg, Artist, BlockchainNetwork } from "@prisma/client";
@@ -158,6 +240,13 @@ export async function estimateGasComprehensive(
     input: GasEstimationInput
 ): Promise<GasEstimationResult> {
     try {
+        // 🚀 캐시된 결과 확인 (5분 TTL)
+        const cachedResult = gasEstimationCache.get(input);
+        if (cachedResult) {
+            console.info(`✅ Gas estimation cache hit: ${input.functionName}`);
+            return cachedResult;
+        }
+
         const {
             networkId,
             walletAddress,
@@ -256,15 +345,28 @@ export async function estimateGasComprehensive(
             const block = await publicClient.getBlock({ blockTag: "latest" });
             if (block.baseFeePerGas) {
                 const baseFee = block.baseFeePerGas;
-                const priorityFee = parseUnits(
-                    (
-                        Number(formatUnits(gasPrice, 9)) * priorityFeeMultiplier
-                    ).toString(),
-                    9
-                );
 
-                maxPriorityFeePerGas = priorityFee;
-                maxFeePerGas = baseFee * 2n + maxPriorityFeePerGas;
+                // 🚀 개선된 가스 가격 계산 (Berachain 대응)
+                const minPriorityFee = parseUnits("0.001", 9); // 최소 0.001 gwei (1000000 wei)
+                const calculatedPriorityFee =
+                    (gasPrice *
+                        BigInt(Math.floor(priorityFeeMultiplier * 1000))) /
+                    1000n;
+
+                // 안전한 최소값 보장
+                maxPriorityFeePerGas =
+                    calculatedPriorityFee > minPriorityFee
+                        ? calculatedPriorityFee
+                        : minPriorityFee;
+
+                // 더 안전한 maxFeePerGas 계산 (베이스 수수료의 150% + 우선순위 수수료)
+                const safeBaseFee = (baseFee * 150n) / 100n;
+                maxFeePerGas = safeBaseFee + maxPriorityFeePerGas;
+
+                // 최종 안전 체크: 베이스 수수료보다 낮으면 보정
+                if (maxFeePerGas <= baseFee) {
+                    maxFeePerGas = baseFee + maxPriorityFeePerGas;
+                }
             }
         } catch (error) {
             console.warn(
@@ -286,7 +388,7 @@ export async function estimateGasComprehensive(
             network
         );
 
-        return {
+        const result: GasEstimationResult = {
             estimatedGas: finalGasEstimate,
             gasPrice,
             maxFeePerGas,
@@ -302,6 +404,12 @@ export async function estimateGasComprehensive(
             recommendation,
             confidence,
         };
+
+        // 🚀 결과를 캐시에 저장 (5분 TTL)
+        gasEstimationCache.set(input, result);
+        console.info(`💾 Gas estimation cached: ${input.functionName}`);
+
+        return result;
     } catch (error) {
         console.error("Comprehensive gas estimation failed:", error);
         throw new Error(

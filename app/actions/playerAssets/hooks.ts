@@ -28,23 +28,28 @@ export function usePlayerAssetsGet({
     getPlayerAssetsInput,
     getPlayerAssetInput,
     getPlayerAssetInstancesInput,
+    realtime = false,
 }: {
     getPlayerAssetsInput?: GetPlayerAssetsInput;
     getPlayerAssetInput?: GetPlayerAssetInput;
     getPlayerAssetInstancesInput?: GetPlayerAssetInstancesInput;
+    realtime?: boolean;
 }) {
     const {
         data: playerAssets,
         isLoading: isPlayerAssetsLoading,
         error: playerAssetsError,
+        refetch: refetchPlayerAssets,
     } = useGetPlayerAssets({
         getPlayerAssetsInput,
+        realtime,
     });
 
     const {
         data: playerAsset,
         isLoading: isPlayerAssetLoading,
         error: playerAssetError,
+        refetch: refetchPlayerAsset,
     } = useGetPlayerAsset({
         getPlayerAssetInput,
     });
@@ -69,10 +74,12 @@ export function usePlayerAssetsGet({
         playerAssets,
         isPlayerAssetsLoading,
         playerAssetsError,
+        refetchPlayerAssets,
 
         playerAsset,
         isPlayerAssetLoading,
         playerAssetError,
+        refetchPlayerAsset,
 
         playerBalance,
         isPlayerBalanceLoading,
@@ -86,6 +93,7 @@ export function usePlayerAssetsGet({
 
 export function usePlayerAssetSet() {
     const {
+        mutate: updatePlayerAssetBackground,
         mutateAsync: updatePlayerAsset,
         isPending: isUpdatePlayerAssetPending,
         error: updatePlayerAssetError,
@@ -146,6 +154,7 @@ export function usePlayerAssetSet() {
         autoExpirePlayerAssetInstancesError;
 
     return {
+        updatePlayerAssetBackground,
         updatePlayerAsset,
         isUpdatePlayerAssetPending,
         updatePlayerAssetError,

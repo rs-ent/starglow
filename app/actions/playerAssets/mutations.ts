@@ -203,9 +203,9 @@ export function useAutoExpirePlayerAssetInstances() {
 
     return useMutation({
         mutationFn: autoExpirePlayerAssetInstances,
-        onSuccess: (data, variables) => {
+        onSuccess: (data, _variables) => {
             if (data?.success && data.data?.affectedPlayers) {
-                data.data.affectedPlayers.forEach(playerId => {
+                data.data.affectedPlayers.forEach((playerId) => {
                     queryClient
                         .invalidateQueries({
                             queryKey: playerAssetsKeys.instances({ playerId }),
@@ -213,7 +213,7 @@ export function useAutoExpirePlayerAssetInstances() {
                         .catch((error) => {
                             console.error(error);
                         });
-                    
+
                     queryClient
                         .invalidateQueries({
                             queryKey: playerAssetsKeys.balances(playerId, []),
@@ -222,15 +222,6 @@ export function useAutoExpirePlayerAssetInstances() {
                             console.error(error);
                         });
                 });
-            } else if (variables?.playerId) {
-                // fallback for specific player
-                queryClient
-                    .invalidateQueries({
-                        queryKey: playerAssetsKeys.instances(variables),
-                    })
-                    .catch((error) => {
-                        console.error(error);
-                    });
             }
         },
     });

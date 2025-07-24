@@ -9,6 +9,11 @@ import {
     FaUserShield,
     FaEye,
     FaSync,
+    FaPlus,
+    FaMinus,
+    FaShieldAlt,
+    FaExclamationTriangle,
+    FaCheckCircle,
 } from "react-icons/fa";
 import { SiEthereum } from "react-icons/si";
 import { TbTopologyStar3 } from "react-icons/tb";
@@ -17,9 +22,13 @@ import type { OnchainRaffleContract } from "@prisma/client";
 import { useToast } from "@/app/hooks/useToast";
 import { useStoryNetwork } from "@/app/story/network/hooks";
 import {
-    getRafflesContracts,
-    updateRafflesContract,
-} from "@/app/actions/raffles/onchain/actions-admin";
+    getRafflesContractsV2,
+    updateRafflesContractV2,
+} from "@/app/actions/raffles/onchain/actions-admin-v2";
+import {
+    manageRole,
+    pauseContract,
+} from "@/app/actions/raffles/onchain/actions-admin-v2";
 
 interface Props {
     onBack: () => void;
@@ -34,11 +43,28 @@ interface ContractWithNetwork extends OnchainRaffleContract {
     };
 }
 
+interface RoleManagementModal {
+    isOpen: boolean;
+    contractAddress: string;
+    currentAction: "grant" | "revoke" | null;
+    targetRole: "ADMIN" | null;
+    targetAddress: string;
+}
+
 export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
     const toast = useToast();
     const [contracts, setContracts] = useState<ContractWithNetwork[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isProcessing, setIsProcessing] = useState<string | null>(null);
+
+    const [roleModal, setRoleModal] = useState<RoleManagementModal>({
+        isOpen: false,
+        contractAddress: "",
+        currentAction: null,
+        targetRole: null,
+        targetAddress: "",
+    });
 
     const { storyNetworks } = useStoryNetwork({
         getStoryNetworksInput: { isActive: true },
@@ -47,7 +73,7 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
     const fetchContracts = useCallback(async () => {
         try {
             setIsRefreshing(true);
-            const result = await getRafflesContracts({ isActive: true });
+            const result = await getRafflesContractsV2({ isActive: true });
 
             if (result.success && result.data) {
                 const contractsWithNetworks = result.data.map((contract) => {
@@ -101,7 +127,8 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
         currentStatus: boolean
     ) => {
         try {
-            const result = await updateRafflesContract({
+            setIsProcessing(contractId);
+            const result = await updateRafflesContractV2({
                 id: contractId,
                 isActive: !currentStatus,
             });
@@ -121,6 +148,112 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
         } catch (error) {
             console.error("Error updating contract status:", error);
             toast.error("컨트랙트 상태 변경 중 오류가 발생했습니다.");
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
+    const handlePauseContract = async (
+        contractId: string,
+        shouldPause: boolean
+    ) => {
+        const contract = contracts.find((c) => c.id === contractId);
+        if (!contract) return;
+
+        try {
+            setIsProcessing(contractId);
+            const result = await pauseContract({
+                contractAddress: contract.address,
+                walletAddress: contract.deployedBy,
+                pause: shouldPause,
+            });
+
+            if (result.success && result.data) {
+                toast.success(
+                    `컨트랙트가 ${shouldPause ? "일시정지" : "재개"}되었습니다.`
+                );
+                await loadContracts();
+            } else {
+                toast.error(
+                    result.error ||
+                        `컨트랙트 ${
+                            shouldPause ? "일시정지" : "재개"
+                        }에 실패했습니다.`
+                );
+            }
+        } catch (error) {
+            console.error("Error pausing/unpausing contract:", error);
+            toast.error(
+                `컨트랙트 ${
+                    shouldPause ? "일시정지" : "재개"
+                } 중 오류가 발생했습니다.`
+            );
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
+    const openRoleModal = (
+        contractAddress: string,
+        action: "grant" | "revoke",
+        role: "ADMIN"
+    ) => {
+        setRoleModal({
+            isOpen: true,
+            contractAddress,
+            currentAction: action,
+            targetRole: role,
+            targetAddress: "",
+        });
+    };
+
+    const closeRoleModal = () => {
+        setRoleModal({
+            isOpen: false,
+            contractAddress: "",
+            currentAction: null,
+            targetRole: null,
+            targetAddress: "",
+        });
+    };
+
+    const handleRoleManagement = async () => {
+        if (
+            !roleModal.contractAddress ||
+            !roleModal.currentAction ||
+            !roleModal.targetRole ||
+            !roleModal.targetAddress
+        ) {
+            toast.error("모든 필드를 입력해주세요.");
+            return;
+        }
+
+        try {
+            setIsProcessing(roleModal.contractAddress);
+            const result = await manageRole({
+                contractAddress: roleModal.contractAddress,
+                targetAddress: roleModal.targetAddress,
+                role: roleModal.targetRole,
+                action: roleModal.currentAction.toUpperCase() as
+                    | "GRANT"
+                    | "REVOKE",
+            });
+
+            if (result.success && result.data) {
+                toast.success(
+                    `${roleModal.targetRole} 역할이 성공적으로 ${
+                        roleModal.currentAction === "grant" ? "부여" : "회수"
+                    }되었습니다.`
+                );
+                closeRoleModal();
+            } else {
+                toast.error(result.error || "역할 관리에 실패했습니다.");
+            }
+        } catch (error) {
+            console.error("Error managing role:", error);
+            toast.error("역할 관리 중 오류가 발생했습니다.");
+        } finally {
+            setIsProcessing(null);
         }
     };
 
@@ -142,15 +275,64 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
             <SiEthereum className="absolute text-[8rem] text-pink-800/10 right-[-2rem] bottom-[-2rem] pointer-events-none select-none" />
 
             <h1 className="mb-8 text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-xl flex items-center gap-3">
-                컨트랙트 <span className="text-purple-400">관리</span>
+                V2 컨트랙트 <span className="text-purple-400">관리</span>
             </h1>
 
             <div className="w-full max-w-6xl bg-black/20 rounded-xl p-8 border border-purple-500/20">
+                {/* V2 기능 안내 */}
+                <div className="mb-8 p-6 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-xl border border-purple-700/30">
+                    <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                        <FaShieldAlt
+                            className="mr-3 text-purple-400"
+                            size={20}
+                        />
+                        RafflesV2 관리 기능
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex items-center gap-3 p-3 bg-purple-900/20 rounded-lg border border-purple-700/50">
+                            <FaUserShield
+                                className="text-purple-400"
+                                size={16}
+                            />
+                            <div>
+                                <div className="font-medium text-white text-sm">
+                                    역할 관리
+                                </div>
+                                <div className="text-xs text-purple-300">
+                                    ADMIN 권한 관리
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-blue-900/20 rounded-lg border border-blue-700/50">
+                            <FaPause className="text-blue-400" size={16} />
+                            <div>
+                                <div className="font-medium text-white text-sm">
+                                    일시정지 제어
+                                </div>
+                                <div className="text-xs text-blue-300">
+                                    긴급 상황 대응
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-green-900/20 rounded-lg border border-green-700/50">
+                            <FaCog className="text-green-400" size={16} />
+                            <div>
+                                <div className="font-medium text-white text-sm">
+                                    고급 관리
+                                </div>
+                                <div className="text-xs text-green-300">
+                                    세밀한 제어 가능
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="space-y-8">
                     <div className="text-center">
                         <FaCog className="text-6xl text-blue-400 mx-auto mb-4" />
                         <p className="text-gray-300 text-lg mb-6">
-                            배포된 래플 컨트랙트를 관리합니다
+                            배포된 RafflesV2 컨트랙트를 관리합니다
                         </p>
                         <button
                             onClick={loadContracts}
@@ -167,7 +349,7 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
                     <div className="grid grid-cols-1 gap-6">
                         <div className="bg-black/30 rounded-lg p-6 border border-gray-700">
                             <h3 className="text-white font-semibold mb-4 text-lg">
-                                배포된 컨트랙트 목록
+                                배포된 V2 컨트랙트 목록
                             </h3>
                             {isLoading ? (
                                 <div className="text-center py-8">
@@ -181,41 +363,49 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
                                     {contracts.map((contract) => (
                                         <div
                                             key={contract.id}
-                                            className="bg-black/40 rounded-lg p-4 border border-gray-600"
+                                            className="bg-black/40 rounded-lg p-6 border border-gray-600"
                                         >
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-3">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-4">
                                                     <div
-                                                        className={`w-3 h-3 rounded-full ${
+                                                        className={`w-4 h-4 rounded-full ${
                                                             contract.isActive
                                                                 ? "bg-green-400"
                                                                 : "bg-red-400"
                                                         }`}
                                                     ></div>
-                                                    <span className="text-white font-medium font-mono">
-                                                        {formatAddress(
-                                                            contract.address
-                                                        )}
-                                                    </span>
-                                                    {contract.network && (
-                                                        <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded">
-                                                            {
-                                                                contract.network
-                                                                    .name
-                                                            }
+                                                    <div>
+                                                        <span className="text-white font-medium font-mono text-lg">
+                                                            {formatAddress(
+                                                                contract.address
+                                                            )}
                                                         </span>
-                                                    )}
-                                                    {contract.network
-                                                        ?.isTestnet && (
-                                                        <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">
-                                                            Testnet
-                                                        </span>
-                                                    )}
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            {contract.network && (
+                                                                <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded">
+                                                                    {
+                                                                        contract
+                                                                            .network
+                                                                            .name
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                            {contract.network
+                                                                ?.isTestnet && (
+                                                                <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">
+                                                                    Testnet
+                                                                </span>
+                                                            )}
+                                                            <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
+                                                                V2
+                                                            </span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <button
                                                         className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-                                                        title="상세보기"
+                                                        title="주소 복사"
                                                         onClick={() => {
                                                             navigator.clipboard
                                                                 .writeText(
@@ -239,36 +429,39 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
                                                     <button
                                                         onClick={() =>
                                                             handleToggleStatus(
-                                                                contract.id,
+                                                                contract.address,
                                                                 contract.isActive
                                                             )
+                                                        }
+                                                        disabled={
+                                                            isProcessing ===
+                                                            contract.address
                                                         }
                                                         className={`p-2 text-white rounded transition-colors ${
                                                             contract.isActive
                                                                 ? "bg-orange-600 hover:bg-orange-700"
                                                                 : "bg-green-600 hover:bg-green-700"
-                                                        }`}
+                                                        } disabled:opacity-50`}
                                                         title={
                                                             contract.isActive
                                                                 ? "비활성화"
                                                                 : "활성화"
                                                         }
                                                     >
-                                                        {contract.isActive ? (
+                                                        {isProcessing ===
+                                                        contract.address ? (
+                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                        ) : contract.isActive ? (
                                                             <FaPause className="text-sm" />
                                                         ) : (
                                                             <FaPlay className="text-sm" />
                                                         )}
                                                     </button>
-                                                    <button
-                                                        className="p-2 bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors"
-                                                        title="관리자 관리"
-                                                    >
-                                                        <FaUserShield className="text-sm" />
-                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+
+                                            {/* 컨트랙트 정보 */}
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                                                 <div>
                                                     <span className="text-gray-400">
                                                         배포일:
@@ -307,16 +500,119 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
                                                     </span>
                                                 </div>
                                             </div>
+
+                                            {/* V2 관리 기능 */}
+                                            <div className="border-t border-gray-600 pt-4">
+                                                <h4 className="text-white font-medium mb-3 flex items-center">
+                                                    <FaShieldAlt
+                                                        className="mr-2 text-purple-400"
+                                                        size={14}
+                                                    />
+                                                    V2 관리 기능
+                                                </h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* 역할 관리 */}
+                                                    <div className="bg-gray-750 rounded-lg p-4 border border-gray-600">
+                                                        <h5 className="text-white font-medium mb-3 text-sm">
+                                                            역할 관리
+                                                        </h5>
+                                                        <div className="space-y-2">
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openRoleModal(
+                                                                            contract.address,
+                                                                            "grant",
+                                                                            "ADMIN"
+                                                                        )
+                                                                    }
+                                                                    className="flex-1 text-xs bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded transition-colors flex items-center justify-center gap-1"
+                                                                >
+                                                                    <FaPlus
+                                                                        size={
+                                                                            10
+                                                                        }
+                                                                    />
+                                                                    ADMIN 부여
+                                                                </button>
+                                                                <button
+                                                                    onClick={() =>
+                                                                        openRoleModal(
+                                                                            contract.address,
+                                                                            "revoke",
+                                                                            "ADMIN"
+                                                                        )
+                                                                    }
+                                                                    className="flex-1 text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors flex items-center justify-center gap-1"
+                                                                >
+                                                                    <FaMinus
+                                                                        size={
+                                                                            10
+                                                                        }
+                                                                    />
+                                                                    ADMIN 회수
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 일시정지 제어 */}
+                                                    <div className="bg-gray-750 rounded-lg p-4 border border-gray-600">
+                                                        <h5 className="text-white font-medium mb-3 text-sm">
+                                                            일시정지 제어
+                                                        </h5>
+                                                        <div className="space-y-2">
+                                                            <button
+                                                                onClick={() =>
+                                                                    handlePauseContract(
+                                                                        contract.id,
+                                                                        true
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    isProcessing ===
+                                                                    contract.id
+                                                                }
+                                                                className="w-full text-xs bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 text-white px-3 py-2 rounded transition-colors flex items-center justify-center gap-1"
+                                                            >
+                                                                <FaPause
+                                                                    size={10}
+                                                                />
+                                                                컨트랙트
+                                                                일시정지
+                                                            </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handlePauseContract(
+                                                                        contract.id,
+                                                                        false
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    isProcessing ===
+                                                                    contract.id
+                                                                }
+                                                                className="w-full text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-3 py-2 rounded transition-colors flex items-center justify-center gap-1"
+                                                            >
+                                                                <FaPlay
+                                                                    size={10}
+                                                                />
+                                                                컨트랙트 재개
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
 
                                     {contracts.length === 0 && !isLoading && (
                                         <div className="text-center py-8">
                                             <p className="text-gray-400">
-                                                배포된 컨트랙트가 없습니다
+                                                배포된 V2 컨트랙트가 없습니다
                                             </p>
                                             <p className="text-gray-500 text-sm mt-2">
-                                                새 컨트랙트를 배포해보세요
+                                                새 V2 컨트랙트를 배포해보세요
                                             </p>
                                         </div>
                                     )}
@@ -358,7 +654,7 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-400">
-                                            총 컨트랙트
+                                            총 V2 컨트랙트
                                         </span>
                                         <span className="text-white font-medium">
                                             {contracts.length}개
@@ -403,38 +699,46 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
 
                             <div className="bg-black/30 rounded-lg p-6 border border-gray-700">
                                 <h3 className="text-white font-semibold mb-4 text-lg">
-                                    관리 작업
+                                    V2 관리 작업
                                 </h3>
                                 <div className="space-y-3">
                                     <button
                                         className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition-colors text-sm"
                                         onClick={() =>
                                             toast.info(
-                                                "관리자 추가 기능 준비 중..."
+                                                "ADMIN 역할 관리는 개별 컨트랙트에서 가능합니다."
                                             )
                                         }
                                     >
-                                        관리자 추가
+                                        <FaUserShield
+                                            className="inline mr-2"
+                                            size={12}
+                                        />
+                                        ADMIN 역할 관리
                                     </button>
                                     <button
-                                        className="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+                                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg transition-colors text-sm"
                                         onClick={() =>
                                             toast.info(
-                                                "일괄 비활성화 기능 준비 중..."
+                                                "일시정지는 개별 컨트랙트에서 가능합니다."
                                             )
                                         }
                                     >
-                                        일괄 비활성화
+                                        <FaPause
+                                            className="inline mr-2"
+                                            size={12}
+                                        />
+                                        일괄 일시정지
                                     </button>
                                     <button
                                         className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors text-sm"
-                                        onClick={() =>
-                                            toast.info(
-                                                "일괄 활성화 기능 준비 중..."
-                                            )
-                                        }
+                                        onClick={() => loadContracts()}
                                     >
-                                        일괄 활성화
+                                        <FaSync
+                                            className="inline mr-2"
+                                            size={12}
+                                        />
+                                        전체 새로고침
                                     </button>
                                 </div>
                             </div>
@@ -442,6 +746,117 @@ export default function AdminRafflesWeb3Contracts({ onBack }: Props) {
                     </div>
                 </div>
             </div>
+
+            {/* 역할 관리 모달 */}
+            {roleModal.isOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 max-w-md w-full mx-4">
+                        <h3 className="text-white font-semibold mb-4 text-lg flex items-center">
+                            <FaUserShield className="mr-2 text-purple-400" />
+                            {roleModal.targetRole} 역할{" "}
+                            {roleModal.currentAction === "grant"
+                                ? "부여"
+                                : "회수"}
+                        </h3>
+
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-gray-300 text-sm mb-2">
+                                    컨트랙트 주소
+                                </label>
+                                <input
+                                    type="text"
+                                    value={roleModal.contractAddress}
+                                    disabled
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-gray-400 text-sm font-mono"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-gray-300 text-sm mb-2">
+                                    대상 주소 *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={roleModal.targetAddress}
+                                    onChange={(e) =>
+                                        setRoleModal((prev) => ({
+                                            ...prev,
+                                            targetAddress: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="0x..."
+                                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm font-mono focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            <div className="p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
+                                <div className="flex items-center gap-2 mb-2">
+                                    {roleModal.currentAction === "grant" ? (
+                                        <FaCheckCircle
+                                            className="text-green-400"
+                                            size={14}
+                                        />
+                                    ) : (
+                                        <FaExclamationTriangle
+                                            className="text-yellow-400"
+                                            size={14}
+                                        />
+                                    )}
+                                    <span className="text-blue-400 font-medium text-sm">
+                                        {roleModal.currentAction === "grant"
+                                            ? "부여"
+                                            : "회수"}{" "}
+                                        작업
+                                    </span>
+                                </div>
+                                <p className="text-blue-300 text-xs">
+                                    {roleModal.targetRole} 역할을{" "}
+                                    {roleModal.currentAction === "grant"
+                                        ? "부여"
+                                        : "회수"}
+                                    합니다. 이 작업은 블록체인에 기록되며 되돌릴
+                                    수 없습니다.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={closeRoleModal}
+                                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded transition-colors"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleRoleManagement}
+                                disabled={
+                                    !roleModal.targetAddress ||
+                                    isProcessing === roleModal.contractAddress
+                                }
+                                className={`flex-1 py-2 px-4 rounded transition-colors ${
+                                    roleModal.currentAction === "grant"
+                                        ? "bg-green-600 hover:bg-green-700"
+                                        : "bg-red-600 hover:bg-red-700"
+                                } text-white disabled:bg-gray-600 disabled:cursor-not-allowed`}
+                            >
+                                {isProcessing === roleModal.contractAddress ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        처리 중...
+                                    </div>
+                                ) : (
+                                    `${
+                                        roleModal.currentAction === "grant"
+                                            ? "부여"
+                                            : "회수"
+                                    } 실행`
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <button
                 className="mt-8 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-200 flex items-center gap-2"

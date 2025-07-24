@@ -7,42 +7,20 @@ import { formatDate } from "@/lib/utils/format";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { useToast } from "@/app/hooks/useToast";
-import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
-
-const safeBigIntToNumber = (value: any): number => {
-    if (typeof value === "bigint") {
-        return Number(value);
-    }
-    if (typeof value === "string") {
-        return parseInt(value, 10);
-    }
-    if (typeof value === "number") {
-        return value;
-    }
-    return 0;
-};
-
-const generateLotteryNumber = (txHash: string) => {
-    const cleanHash = txHash.replace("0x", "");
-    let sum = 0;
-    for (let i = 0; i < cleanHash.length; i += 4) {
-        const chunk = cleanHash.slice(i, i + 4);
-        sum += parseInt(chunk, 16);
-    }
-    const lotteryNumber = ((sum % 900000) + 100000).toString();
-    return lotteryNumber.replace(/(\d{3})(\d{3})/, "$1-$2");
+const generateLotteryNumber = (ticketNumber: number) => {
+    const ticketStr = ticketNumber.toString().padStart(6, "0");
+    return ticketStr.replace(/(\d{3})(\d{3})/, "$1-$2");
 };
 
 interface ParticipationRecord {
-    participantId: bigint;
-    ticketNumber: string;
-    participatedAt: bigint;
+    participantId: string;
+    ticketNumber: number;
+    participatedAt: number;
     hasLotteryResult: boolean;
-    resultId: bigint;
-    prizeIndex: bigint;
+    prizeIndex: number;
     claimed: boolean;
-    drawnAt: bigint;
-    claimedAt: bigint;
+    drawnAt: number;
+    claimedAt: number;
 }
 
 interface RaffleOnchainParticipationLogCardProps {
@@ -63,22 +41,8 @@ export default memo(function RaffleOnchainParticipationLogCard({
     const toast = useToast();
     const isDrawn = record.hasLotteryResult;
     const isRevealed = record.hasLotteryResult;
-    const hasWon =
-        record.hasLotteryResult && safeBigIntToNumber(record.prizeIndex) > 0;
-    const isRevealingThis =
-        selectedRecord === safeBigIntToNumber(record.participantId).toString();
-
-    const { lotteryResult } = useOnchainRaffles({
-        getLotteryResultInput:
-            isRevealed && hasWon
-                ? {
-                      contractAddress,
-                      resultId: safeBigIntToNumber(record.resultId).toString(),
-                  }
-                : undefined,
-    });
-
-    const prizeData = lotteryResult?.data?.prize;
+    const hasWon = record.hasLotteryResult && record.prizeIndex > 0;
+    const isRevealingThis = selectedRecord === record.participantId;
 
     const getStatusIcon = () => {
         if (!isDrawn)
@@ -129,18 +93,18 @@ export default memo(function RaffleOnchainParticipationLogCard({
     };
 
     const handleCopyTicketNumber = () => {
-        navigator.clipboard.writeText(record.ticketNumber).catch((err) => {
-            console.error(err);
-        });
+        navigator.clipboard
+            .writeText(record.ticketNumber.toString())
+            .catch((err) => {
+                console.error(err);
+            });
         toast.success("Copied to clipboard");
     };
 
     const handleReveal = () => {
-        onReveal(safeBigIntToNumber(record.participantId).toString()).catch(
-            (err) => {
-                console.error(err);
-            }
-        );
+        onReveal(record.participantId).catch((err) => {
+            console.error(err);
+        });
     };
 
     return (
@@ -198,11 +162,7 @@ export default memo(function RaffleOnchainParticipationLogCard({
                                 )}
                             >
                                 {formatDate(
-                                    new Date(
-                                        safeBigIntToNumber(
-                                            record.participatedAt
-                                        ) * 1000
-                                    )
+                                    new Date(record.participatedAt * 1000)
                                 )}
                             </span>
                             <span
@@ -212,7 +172,8 @@ export default memo(function RaffleOnchainParticipationLogCard({
                                     getResponsiveClass(5).textClass
                                 )}
                             >
-                                {record.ticketNumber.slice(0, 8) + "..."}
+                                {record.ticketNumber.toString().slice(0, 8) +
+                                    "..."}
                                 <Copy
                                     className={cn(
                                         "w-4 h-4",
@@ -227,27 +188,15 @@ export default memo(function RaffleOnchainParticipationLogCard({
                     {isRevealed && hasWon ? (
                         <div className="flex items-center gap-1">
                             <div className="text-right font-main">
-                                {prizeData ? (
-                                    <div
-                                        className={cn(
-                                            "font-bold text-green-400 text-lg",
-                                            getResponsiveClass(20).textClass
-                                        )}
-                                    >
-                                        {prizeData.title}
-                                    </div>
-                                ) : (
-                                    <div
-                                        className={cn(
-                                            "font-bold text-green-400 text-lg",
-                                            getResponsiveClass(20).textClass
-                                        )}
-                                    >
-                                        Prize #
-                                        {safeBigIntToNumber(record.prizeIndex) +
-                                            1}
-                                    </div>
-                                )}
+                                <div
+                                    className={cn(
+                                        "font-bold text-green-400 text-lg",
+                                        getResponsiveClass(20).textClass
+                                    )}
+                                >
+                                    {/* 🚨 WARNING: prizeIndex는 원본 배열 인덱스임. order 기반 순서 표시 필요 */}
+                                    Prize #{record.prizeIndex + 1}
+                                </div>
                                 <div
                                     className={cn(
                                         "text-sm text-white/60",

@@ -45,6 +45,7 @@ function RewardPanel({ playerId, assetNames, className }: RewardPanelProps) {
                     includeDefaultAsset: true,
                 },
             },
+            realtime: true,
         });
 
     // 표시할 플레이어 자산 필터링

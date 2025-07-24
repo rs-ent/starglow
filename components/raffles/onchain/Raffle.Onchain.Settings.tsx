@@ -22,12 +22,29 @@ import { Particles } from "@/components/magicui/particles";
 interface RaffleOnchainSettingsProps {
     data?: {
         dynamicWeight?: boolean;
-        participationLimit?: bigint | number;
-        participationLimitPerPlayer?: bigint | number;
+        maxEntriesPerPlayer?: bigint | number;
+        maxParticipants?: bigint | number;
     };
 }
 
 const INFINITE = maxUint256;
+
+const CONTAINER_VARIANTS = {
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+    },
+};
+
+const ITEM_VARIANTS = {
+    hidden: { opacity: 0, x: -20 },
+    visible: {
+        opacity: 1,
+        x: 0,
+    },
+};
 
 const SparkleIcon = memo(({ className }: { className?: string }) => (
     <div className={cn("relative", className)}>
@@ -109,6 +126,7 @@ SettingsLoadingState.displayName = "SettingsLoadingState";
 const SettingItem = memo(
     ({
         icon,
+        title,
         description,
         value,
         label,
@@ -117,6 +135,7 @@ const SettingItem = memo(
         isUnlimited = false,
     }: {
         icon: React.ReactNode;
+        title: string;
         description: string;
         value: string;
         label: string;
@@ -267,7 +286,7 @@ const SettingItem = memo(
                                         getResponsiveClass(15).textClass
                                     )}
                                 >
-                                    {label}
+                                    {title}
                                 </h4>
                                 <p
                                     className={cn(
@@ -279,7 +298,7 @@ const SettingItem = memo(
                                 </p>
                             </div>
                         </div>
-                        <div className="text-left sm:text-right flex-shrink-0">
+                        <div className="flex flex-row gap-1 justify-end items-baseline text-left sm:text-right flex-shrink-0">
                             <motion.div
                                 animate={
                                     isUnlimited
@@ -326,38 +345,15 @@ SettingItem.displayName = "SettingItem";
 export default memo(function RaffleOnchainSettings({
     data,
 }: RaffleOnchainSettingsProps) {
-    const containerVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, y: 30, scale: 0.95 },
-            visible: {
-                opacity: 1,
-                y: 0,
-                scale: 1,
-            },
-        }),
-        []
-    );
-
-    const itemVariants = useMemo(
-        () => ({
-            hidden: { opacity: 0, x: -20 },
-            visible: {
-                opacity: 1,
-                x: 0,
-            },
-        }),
-        []
-    );
-
     if (!data) {
         return <SettingsLoadingState />;
     }
 
-    const participationLimit = data.participationLimit
-        ? Number(data.participationLimit)
+    const participationLimit = data.maxParticipants
+        ? Number(data.maxParticipants)
         : 0;
-    const participationLimitPerPlayer = data.participationLimitPerPlayer
-        ? Number(data.participationLimitPerPlayer)
+    const participationLimitPerPlayer = data.maxEntriesPerPlayer
+        ? Number(data.maxEntriesPerPlayer)
         : 0;
 
     const isUnlimitedTotal =
@@ -368,7 +364,7 @@ export default memo(function RaffleOnchainSettings({
 
     return (
         <motion.div
-            variants={containerVariants}
+            variants={CONTAINER_VARIANTS}
             initial="hidden"
             animate="visible"
             transition={{
@@ -447,7 +443,7 @@ export default memo(function RaffleOnchainSettings({
 
             <div className="relative z-10">
                 <motion.div
-                    variants={itemVariants}
+                    variants={ITEM_VARIANTS}
                     transition={{ duration: 0.6, ease: "easeOut" }}
                     className={cn(
                         "flex items-center mb-6 sm:mb-8",
@@ -464,14 +460,6 @@ export default memo(function RaffleOnchainSettings({
                         >
                             Raffle Settings
                         </h3>
-                        <p
-                            className={cn(
-                                "text-emerald-300/80 font-medium",
-                                getResponsiveClass(15).textClass
-                            )}
-                        >
-                            Cosmic Configuration
-                        </p>
                     </div>
                 </motion.div>
 
@@ -498,6 +486,7 @@ export default memo(function RaffleOnchainSettings({
                                 : "Static number of prizes regardless of participation"
                         }
                         value={data.dynamicWeight ? "DYNAMIC" : "STATIC"}
+                        title="Draw Method"
                         label=""
                         colorScheme={data.dynamicWeight ? "purple" : "emerald"}
                         delay={0.3}
@@ -519,19 +508,18 @@ export default memo(function RaffleOnchainSettings({
                                 />
                             )
                         }
+                        title="Total Seats"
                         description={
                             isUnlimitedTotal
                                 ? "No limit on total participants"
-                                : "Maximum number of total participations"
+                                : "Maximum number of total participants"
                         }
                         value={
                             isUnlimitedTotal
                                 ? "∞"
                                 : participationLimit.toLocaleString()
                         }
-                        label={
-                            isUnlimitedTotal ? "Unlimited" : "participations"
-                        }
+                        label={isUnlimitedTotal ? "Unlimited" : "seats"}
                         colorScheme={isUnlimitedTotal ? "emerald" : "orange"}
                         delay={0.4}
                         isUnlimited={isUnlimitedTotal}
@@ -553,56 +541,57 @@ export default memo(function RaffleOnchainSettings({
                                 />
                             )
                         }
+                        title="Tickets per Seat"
                         description={
                             isUnlimitedPerPlayer
                                 ? "Each player can participate unlimited times"
-                                : "Maximum participations per player"
+                                : "Maximum tickets per player"
                         }
                         value={
                             isUnlimitedPerPlayer
                                 ? "∞"
                                 : participationLimitPerPlayer.toLocaleString()
                         }
-                        label={
-                            isUnlimitedPerPlayer ? "Unlimited" : "per player"
-                        }
+                        label={isUnlimitedPerPlayer ? "Unlimited" : "tickets"}
                         colorScheme={
                             isUnlimitedPerPlayer ? "emerald" : "yellow"
                         }
                         delay={0.5}
                         isUnlimited={isUnlimitedPerPlayer}
                     />
-                </div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.4 }}
-                    className="relative mt-6 sm:mt-8 p-3 sm:p-4 rounded-2xl overflow-hidden bg-gradient-to-br from-slate-800/60 to-slate-700/60 border border-slate-400/30 shadow-2xl shadow-slate-500/20 backdrop-blur-lg"
-                >
-                    <div className="absolute inset-0 bg-gradient-to-r from-slate-500/8 to-slate-400/8" />
-                    <div className="relative z-10 flex items-center gap-3">
-                        <motion.div
-                            animate={{ rotate: [0, 3, -3, 0] }}
-                            transition={{
-                                duration: 6,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                            }}
-                        >
-                            <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 flex-shrink-0" />
-                        </motion.div>
-                        <span
-                            className={cn(
-                                "text-slate-300",
-                                getResponsiveClass(10).textClass
-                            )}
-                        >
-                            These cosmic settings are configured by the raffle
-                            creator
-                        </span>
-                    </div>
-                </motion.div>
+                    <SettingItem
+                        icon={
+                            isUnlimitedPerPlayer ? (
+                                <InfinityIcon
+                                    className={
+                                        getResponsiveClass(20).frameClass
+                                    }
+                                />
+                            ) : (
+                                <User
+                                    className={
+                                        getResponsiveClass(20).frameClass
+                                    }
+                                />
+                            )
+                        }
+                        title="Total Tickets"
+                        description={"Total Seats × Tickets per Seat"}
+                        value={
+                            isUnlimitedPerPlayer
+                                ? "∞"
+                                : (
+                                      participationLimit *
+                                      participationLimitPerPlayer
+                                  ).toLocaleString()
+                        }
+                        label={isUnlimitedPerPlayer ? "Unlimited" : "tickets"}
+                        colorScheme={"purple"}
+                        delay={0.5}
+                        isUnlimited={isUnlimitedPerPlayer}
+                    />
+                </div>
             </div>
         </motion.div>
     );

@@ -114,13 +114,24 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
         [spgResult.getSPGsData]
     );
 
+    console.log("🔍 디버깅 정보:", {
+        assetsLoading: assetsResult.isAssetsLoading,
+        assetsError: assetsResult.assetsError,
+        assetsCount: assetsData?.length || 0,
+        assetsData: assetsData?.slice(0, 3),
+        spgLoading: spgResult.getSPGsIsLoading,
+        spgError: spgResult.getSPGsError,
+        spgCount: spgsData?.length || 0,
+        spgsData: spgsData?.slice(0, 3),
+    });
+
     const addPrize = useCallback(() => {
         const prizes = Array.isArray(data.prizes) ? data.prizes : [];
 
         const newPrize = {
             prizeType: 0 as 0 | 1 | 2 | 3,
             collectionAddress: "",
-            registeredTicketQuantity: 10,
+            quantity: 10,
             order: prizes.length + 1,
             rarity: 0,
             prizeQuantity: 1,
@@ -242,6 +253,10 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                 const updates = {
                     assetId: assetId,
                     imageUrl: defaultImage,
+                    title: selectedAsset.name,
+                    description: selectedAsset.symbol,
+                    quantity: 0,
+                    prizeQuantity: 0,
                 };
 
                 try {
@@ -258,6 +273,29 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
             }
         },
         [assetsData, updatePrize, updateMultipleFields]
+    );
+
+    const handlePrizeQuantityChange = useCallback(
+        (index: number, quantity: number) => {
+            const prizes = Array.isArray(data.prizes) ? data.prizes : [];
+            const newPrizes = [...prizes];
+            const selectedAsset = assetsData?.find(
+                (a) => a.id === newPrizes[index].assetId
+            );
+
+            if (selectedAsset) {
+                newPrizes[index] = {
+                    ...newPrizes[index],
+                    prizeQuantity: quantity,
+                    title: selectedAsset.symbol + " x" + quantity,
+                    description: selectedAsset.name + " x" + quantity,
+                    userValue: prizes[index].prizeType * quantity,
+                };
+
+                updateData("prizes", newPrizes);
+            }
+        },
+        [data.prizes, updateData, assetsData]
     );
 
     const handleNFTSelection = useCallback(
@@ -298,6 +336,8 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                 data.fee?.participationFeeAmount || "0"
             );
 
+            console.log("Prize Type Changed", prizeType);
+
             const updates: Record<string, any> = {
                 prizeType,
                 assetId: "",
@@ -317,7 +357,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                         : prizeType === 3
                         ? entryFee * 3 // 토큰 기본값: 참가비의 3배
                         : entryFee,
-                registeredTicketQuantity: prizeType === 0 ? 10 : 1, // 빈 상품은 기본적으로 많은 티켓 할당
+                quantity: prizeType === 0 ? 10 : 1, // 빈 상품은 기본적으로 많은 티켓 할당
                 prizeQuantity: 1,
             };
 
@@ -350,7 +390,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                     prize.collectionAddress ||
                     `prize-${prize.order}`,
                 title: prize.title || `상품 #${prize.order}`,
-                quantity: prize.registeredTicketQuantity || 1,
+                quantity: prize.quantity || 1,
                 userValue: parseFloat(prize.userValue?.toString() || "0"), // 실제 입력된 상품 가치 사용
                 prizeType: prize.prizeType,
             })),
@@ -404,60 +444,6 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
         runQuickAnalysis,
     ]);
 
-    // 분석 결과 기반 경고/제안 생성
-    const analysisInsights = useMemo(() => {
-        if (!simulationState.result) return [];
-
-        const insights = [];
-        const stats = simulationState.result.finalStats;
-
-        // 공정성 경고
-        if (stats.fairnessIndex < 0.6) {
-            insights.push({
-                type: "warning",
-                title: "공정성 개선 필요",
-                message: `공정성 지수가 ${(stats.fairnessIndex * 100).toFixed(
-                    1
-                )}%로 낮습니다.`,
-                suggestion: "상품 당첨 확률을 더 균등하게 분배하세요.",
-            });
-        }
-
-        // ROI 경고
-        if (stats.mean < -20) {
-            insights.push({
-                type: "error",
-                title: "수익성 문제",
-                message: `평균 손실이 ${Math.abs(stats.mean).toFixed(
-                    2
-                )}입니다.`,
-                suggestion: "참가비를 높이거나 상품 가치를 조정하세요.",
-            });
-        }
-
-        // 리스크 경고
-        if (stats.sharpeRatio < 0.3) {
-            insights.push({
-                type: "warning",
-                title: "높은 리스크",
-                message: "샤프 비율이 낮아 리스크 대비 수익이 부족합니다.",
-                suggestion: "상품 구성을 재검토하세요.",
-            });
-        }
-
-        // 긍정적 피드백
-        if (stats.fairnessIndex > 0.8 && stats.mean > 0) {
-            insights.push({
-                type: "success",
-                title: "훌륭한 설계",
-                message: "공정성과 수익성이 모두 우수합니다!",
-                suggestion: "현재 설정을 유지하세요.",
-            });
-        }
-
-        return insights;
-    }, [simulationState.result]);
-
     const availableTiers = useMemo(() => {
         return Object.entries(tierMap).map(([key, tier]) => ({
             value: parseInt(key),
@@ -468,7 +454,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
     const prizeStats = useMemo(() => {
         const prizes = Array.isArray(data.prizes) ? data.prizes : [];
         const totalTickets = prizes.reduce(
-            (sum, prize) => sum + (prize?.registeredTicketQuantity || 0),
+            (sum, prize) => sum + (prize?.quantity || 0),
             0
         );
 
@@ -477,7 +463,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                 (p) => p?.rarity === tier.value
             );
             const tickets = prizesOfRarity.reduce(
-                (sum, p) => sum + (p?.registeredTicketQuantity || 0),
+                (sum, p) => sum + (p?.quantity || 0),
                 0
             );
             return {
@@ -705,10 +691,8 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                 prize.prizeQuantity
                                                             }
                                                             개 상품 |{" "}
-                                                            {
-                                                                prize.registeredTicketQuantity
-                                                            }
-                                                            개 티켓
+                                                            {prize.quantity}개
+                                                            티켓
                                                         </p>
                                                     </div>
                                                 </div>
@@ -852,40 +836,39 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                             </select>
                                                         </div>
 
+                                                        <div>
+                                                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                                티켓 수량 *
+                                                            </label>
+                                                            <input
+                                                                type="number"
+                                                                value={
+                                                                    prize.quantity
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updatePrize(
+                                                                        index,
+                                                                        "quantity",
+                                                                        Math.max(
+                                                                            1,
+                                                                            parseInt(
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            ) ||
+                                                                                1
+                                                                        )
+                                                                    )
+                                                                }
+                                                                min="1"
+                                                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            />
+                                                        </div>
                                                         <div className="grid grid-cols-2 gap-3">
                                                             <div>
                                                                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                                                                    티켓 수량 *
-                                                                </label>
-                                                                <input
-                                                                    type="number"
-                                                                    value={
-                                                                        prize.registeredTicketQuantity
-                                                                    }
-                                                                    onChange={(
-                                                                        e
-                                                                    ) =>
-                                                                        updatePrize(
-                                                                            index,
-                                                                            "registeredTicketQuantity",
-                                                                            Math.max(
-                                                                                1,
-                                                                                parseInt(
-                                                                                    e
-                                                                                        .target
-                                                                                        .value
-                                                                                ) ||
-                                                                                    1
-                                                                            )
-                                                                        )
-                                                                    }
-                                                                    min="1"
-                                                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                                                    상품 수량 *
+                                                                    상품 배송
+                                                                    수량 *
                                                                 </label>
                                                                 <input
                                                                     type="number"
@@ -895,9 +878,8 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                     onChange={(
                                                                         e
                                                                     ) =>
-                                                                        updatePrize(
+                                                                        handlePrizeQuantityChange(
                                                                             index,
-                                                                            "prizeQuantity",
                                                                             Math.max(
                                                                                 1,
                                                                                 parseInt(
@@ -913,88 +895,93 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                                                 />
                                                             </div>
-                                                        </div>
 
-                                                        {/* 상품 가치 입력 필드 추가 */}
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-300 mb-2">
-                                                                <FaDollarSign
-                                                                    className="inline mr-2 text-green-400"
-                                                                    size={14}
-                                                                />
-                                                                상품 가치 (
-                                                                {data.fee
-                                                                    ?.participationFeeAsset
-                                                                    ? assetsData?.find(
-                                                                          (a) =>
-                                                                              a.id ===
-                                                                              data
-                                                                                  .fee
-                                                                                  .participationFeeAsset
-                                                                      )
-                                                                          ?.symbol ||
-                                                                      "에셋"
-                                                                    : "에셋"}
-                                                                ) *
-                                                                <span className="text-yellow-400 text-xs ml-2">
-                                                                    분석
-                                                                    정확도에
-                                                                    중요!
-                                                                </span>
-                                                            </label>
-                                                            <input
-                                                                type="number"
-                                                                value={
-                                                                    prize.userValue ||
-                                                                    0
-                                                                }
-                                                                onChange={(e) =>
-                                                                    updatePrize(
-                                                                        index,
-                                                                        "userValue",
-                                                                        Math.max(
-                                                                            0,
-                                                                            parseFloat(
-                                                                                e
-                                                                                    .target
-                                                                                    .value
-                                                                            ) ||
-                                                                                0
+                                                            <div>
+                                                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                                                    <FaDollarSign
+                                                                        className="inline mr-2 text-green-400"
+                                                                        size={
+                                                                            14
+                                                                        }
+                                                                    />
+                                                                    상품 가치 (
+                                                                    {data.fee
+                                                                        ?.participationFeeAsset
+                                                                        ? assetsData?.find(
+                                                                              (
+                                                                                  a
+                                                                              ) =>
+                                                                                  a.id ===
+                                                                                  data
+                                                                                      .fee
+                                                                                      .participationFeeAsset
+                                                                          )
+                                                                              ?.symbol ||
+                                                                          "에셋"
+                                                                        : "에셋"}
+                                                                    ) *
+                                                                    <span className="text-yellow-400 text-xs ml-2">
+                                                                        분석
+                                                                        정확도에
+                                                                        중요!
+                                                                    </span>
+                                                                </label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={
+                                                                        prize.userValue ||
+                                                                        0
+                                                                    }
+                                                                    onChange={(
+                                                                        e
+                                                                    ) =>
+                                                                        updatePrize(
+                                                                            index,
+                                                                            "userValue",
+                                                                            Math.max(
+                                                                                0,
+                                                                                parseFloat(
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
+                                                                                ) ||
+                                                                                    0
+                                                                            )
                                                                         )
-                                                                    )
-                                                                }
-                                                                min="0"
-                                                                step="0.01"
-                                                                placeholder={
-                                                                    prize.prizeType ===
+                                                                    }
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    placeholder={
+                                                                        prize.prizeType ===
+                                                                        0
+                                                                            ? "0 (빈 상품)"
+                                                                            : prize.prizeType ===
+                                                                              1
+                                                                            ? "에셋의 실제 가치"
+                                                                            : prize.prizeType ===
+                                                                              2
+                                                                            ? "NFT의 예상 가치"
+                                                                            : "상품의 실제 가치"
+                                                                    }
+                                                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                                    disabled={
+                                                                        prize.prizeType ===
+                                                                        0
+                                                                    }
+                                                                />
+                                                                <p className="mt-1 text-xs text-gray-400">
+                                                                    {prize.prizeType ===
                                                                     0
-                                                                        ? "0 (빈 상품)"
+                                                                        ? "빈 상품은 가치가 0입니다"
                                                                         : prize.prizeType ===
                                                                           1
-                                                                        ? "에셋의 실제 가치"
+                                                                        ? "에셋의 시장 가치나 내부 가치를 입력하세요"
                                                                         : prize.prizeType ===
                                                                           2
-                                                                        ? "NFT의 예상 가치"
-                                                                        : "상품의 실제 가치"
-                                                                }
-                                                                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                                                disabled={
-                                                                    prize.prizeType ===
-                                                                    0
-                                                                }
-                                                            />
-                                                            <p className="mt-1 text-xs text-gray-400">
-                                                                {prize.prizeType ===
-                                                                0
-                                                                    ? "빈 상품은 가치가 0입니다"
-                                                                    : prize.prizeType ===
-                                                                      1
-                                                                    ? "에셋의 시장 가치나 내부 가치를 입력하세요"
-                                                                    : prize.prizeType ===
-                                                                      2
-                                                                    ? "NFT의 floor price나 예상 가치를 입력하세요"
-                                                                    : "참가비와 비교할 수 있는 실제 가치를 입력하세요"}
-                                                            </p>
+                                                                        ? "NFT의 floor price나 예상 가치를 입력하세요"
+                                                                        : "참가비와 비교할 수 있는 실제 가치를 입력하세요"}
+                                                                </p>
+                                                            </div>
                                                         </div>
 
                                                         {prize.prizeType ===
@@ -1002,6 +989,17 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                             <div>
                                                                 <label className="block text-sm font-medium text-gray-300 mb-2">
                                                                     에셋 선택
+                                                                    {assetsResult.isAssetsLoading && (
+                                                                        <span className="ml-2 text-blue-400 text-xs">
+                                                                            로딩중...
+                                                                        </span>
+                                                                    )}
+                                                                    {assetsResult.assetsError && (
+                                                                        <span className="ml-2 text-red-400 text-xs">
+                                                                            에러
+                                                                            발생
+                                                                        </span>
+                                                                    )}
                                                                 </label>
                                                                 <select
                                                                     value={
@@ -1018,37 +1016,72 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                                 .value
                                                                         )
                                                                     }
-                                                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                    disabled={
+                                                                        assetsResult.isAssetsLoading
+                                                                    }
+                                                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                                                                 >
                                                                     <option value="">
-                                                                        에셋
-                                                                        선택
+                                                                        {assetsResult.isAssetsLoading
+                                                                            ? "에셋 로딩중..."
+                                                                            : assetsResult.assetsError
+                                                                            ? "에셋 로딩 실패"
+                                                                            : assetsData?.length ===
+                                                                              0
+                                                                            ? "등록된 에셋이 없습니다"
+                                                                            : "에셋 선택"}
                                                                     </option>
-                                                                    {assetsData?.map(
-                                                                        (
-                                                                            asset: Asset
-                                                                        ) => (
-                                                                            <option
-                                                                                key={
-                                                                                    asset.id
-                                                                                }
-                                                                                value={
-                                                                                    asset.id
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    asset.name
-                                                                                }{" "}
-                                                                                (
-                                                                                {
-                                                                                    asset.symbol
-                                                                                }
+                                                                    {!assetsResult.isAssetsLoading &&
+                                                                        !assetsResult.assetsError &&
+                                                                        assetsData?.map(
+                                                                            (
+                                                                                asset: Asset
+                                                                            ) => (
+                                                                                <option
+                                                                                    key={
+                                                                                        asset.id
+                                                                                    }
+                                                                                    value={
+                                                                                        asset.id
+                                                                                    }
+                                                                                >
+                                                                                    {
+                                                                                        asset.name
+                                                                                    }{" "}
+                                                                                    (
+                                                                                    {
+                                                                                        asset.symbol
+                                                                                    }
 
-                                                                                )
-                                                                            </option>
-                                                                        )
-                                                                    )}
+                                                                                    )
+                                                                                </option>
+                                                                            )
+                                                                        )}
                                                                 </select>
+                                                                {assetsResult.assetsError && (
+                                                                    <p className="mt-1 text-xs text-red-400">
+                                                                        에셋
+                                                                        로딩 중
+                                                                        오류가
+                                                                        발생했습니다:{" "}
+                                                                        {String(
+                                                                            assetsResult.assetsError
+                                                                        )}
+                                                                    </p>
+                                                                )}
+                                                                {!assetsResult.isAssetsLoading &&
+                                                                    !assetsResult.assetsError &&
+                                                                    assetsData?.length ===
+                                                                        0 && (
+                                                                        <p className="mt-1 text-xs text-yellow-400">
+                                                                            등록된
+                                                                            에셋이
+                                                                            없습니다.
+                                                                            먼저
+                                                                            에셋을
+                                                                            생성해주세요.
+                                                                        </p>
+                                                                    )}
                                                             </div>
                                                         )}
 
@@ -1058,6 +1091,17 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                 <label className="block text-sm font-medium text-gray-300 mb-2">
                                                                     NFT 컬렉션
                                                                     선택
+                                                                    {spgResult.getSPGsIsLoading && (
+                                                                        <span className="ml-2 text-blue-400 text-xs">
+                                                                            로딩중...
+                                                                        </span>
+                                                                    )}
+                                                                    {spgResult.getSPGsError && (
+                                                                        <span className="ml-2 text-red-400 text-xs">
+                                                                            에러
+                                                                            발생
+                                                                        </span>
+                                                                    )}
                                                                 </label>
                                                                 <select
                                                                     value={
@@ -1074,37 +1118,75 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                                 .value
                                                                         )
                                                                     }
-                                                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                                    disabled={
+                                                                        spgResult.getSPGsIsLoading
+                                                                    }
+                                                                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                                                                 >
                                                                     <option value="">
-                                                                        컬렉션
-                                                                        선택
+                                                                        {spgResult.getSPGsIsLoading
+                                                                            ? "NFT 컬렉션 로딩중..."
+                                                                            : spgResult.getSPGsError
+                                                                            ? "NFT 컬렉션 로딩 실패"
+                                                                            : spgsData?.length ===
+                                                                              0
+                                                                            ? "등록된 NFT 컬렉션이 없습니다"
+                                                                            : "컬렉션 선택"}
                                                                     </option>
-                                                                    {spgsData?.map(
-                                                                        (
-                                                                            spg: SPG
-                                                                        ) => (
-                                                                            <option
-                                                                                key={
-                                                                                    spg.id
-                                                                                }
-                                                                                value={
-                                                                                    spg.address
-                                                                                }
-                                                                            >
-                                                                                {
-                                                                                    spg.name
-                                                                                }{" "}
-                                                                                (
-                                                                                {
-                                                                                    spg.symbol
-                                                                                }
+                                                                    {!spgResult.getSPGsIsLoading &&
+                                                                        !spgResult.getSPGsError &&
+                                                                        spgsData?.map(
+                                                                            (
+                                                                                spg: SPG
+                                                                            ) => (
+                                                                                <option
+                                                                                    key={
+                                                                                        spg.id
+                                                                                    }
+                                                                                    value={
+                                                                                        spg.address
+                                                                                    }
+                                                                                >
+                                                                                    {
+                                                                                        spg.name
+                                                                                    }{" "}
+                                                                                    (
+                                                                                    {
+                                                                                        spg.symbol
+                                                                                    }
 
-                                                                                )
-                                                                            </option>
-                                                                        )
-                                                                    )}
+                                                                                    )
+                                                                                </option>
+                                                                            )
+                                                                        )}
                                                                 </select>
+                                                                {spgResult.getSPGsError && (
+                                                                    <p className="mt-1 text-xs text-red-400">
+                                                                        NFT
+                                                                        컬렉션
+                                                                        로딩 중
+                                                                        오류가
+                                                                        발생했습니다:{" "}
+                                                                        {String(
+                                                                            spgResult.getSPGsError
+                                                                        )}
+                                                                    </p>
+                                                                )}
+                                                                {!spgResult.getSPGsIsLoading &&
+                                                                    !spgResult.getSPGsError &&
+                                                                    spgsData?.length ===
+                                                                        0 && (
+                                                                        <p className="mt-1 text-xs text-yellow-400">
+                                                                            등록된
+                                                                            NFT
+                                                                            컬렉션이
+                                                                            없습니다.
+                                                                            먼저
+                                                                            NFT
+                                                                            컬렉션을
+                                                                            생성해주세요.
+                                                                        </p>
+                                                                    )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1537,7 +1619,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                     {prizeStats.totalTickets >
                                                                     0
                                                                         ? `${(
-                                                                              (prize.registeredTicketQuantity /
+                                                                              (prize.quantity /
                                                                                   prizeStats.totalTickets) *
                                                                               100
                                                                           ).toFixed(
@@ -1563,7 +1645,7 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                                                 </div>
                                                                 <div className="text-white font-medium">
                                                                     {
-                                                                        prize.registeredTicketQuantity
+                                                                        prize.quantity
                                                                     }
                                                                     개
                                                                 </div>
@@ -1842,83 +1924,6 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                         </div>
                     </div>
 
-                    <div className="bg-blue-900/30 border border-blue-700 rounded-xl p-4">
-                        <div className="flex items-center mb-3">
-                            <FaLightbulb
-                                className="text-blue-400 mr-2"
-                                size={16}
-                            />
-                            <span className="text-blue-400 font-medium">
-                                상품 설정 가이드
-                            </span>
-                        </div>
-                        <div className="space-y-2 text-sm text-blue-300">
-                            <p>• 드래그앤드롭으로 상품 순서 변경</p>
-                            <p>• 희귀도가 높을수록 적은 티켓 권장</p>
-                            <p>• 총 티켓 수는 참가 제한과 비례</p>
-                            <p>• 에셋/NFT 선택으로 실제 상품 연결</p>
-                        </div>
-                    </div>
-
-                    {prizeStats.totalTickets > 0 && (
-                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                            <h4 className="text-lg font-semibold text-white mb-4 flex items-center">
-                                <FaDice
-                                    className="mr-3 text-green-400"
-                                    size={16}
-                                />
-                                확률 계산기
-                            </h4>
-
-                            <div className="space-y-3 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-300">
-                                        아무 상품 당첨:
-                                    </span>
-                                    <span className="text-green-400 font-medium">
-                                        {(
-                                            (prizeStats.totalTickets /
-                                                Math.max(
-                                                    data.settings
-                                                        ?.participationLimit ||
-                                                        1000,
-                                                    1
-                                                )) *
-                                            100
-                                        ).toFixed(1)}
-                                        %
-                                    </span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-300">
-                                        1인당 평균 시도:
-                                    </span>
-                                    <span className="text-blue-400 font-medium">
-                                        {(
-                                            (data.settings
-                                                ?.participationLimit || 1000) /
-                                            prizeStats.totalTickets
-                                        ).toFixed(1)}
-                                        회
-                                    </span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-300">
-                                        예상 당첨자:
-                                    </span>
-                                    <span className="text-purple-400 font-medium">
-                                        {Math.min(
-                                            prizeStats.totalTickets,
-                                            data.settings?.participationLimit ||
-                                                1000
-                                        )}
-                                        명
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* 실시간 분석 결과 */}
                     {showAnalysis && (
                         <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -2019,144 +2024,6 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* 인사이트 및 제안 */}
-                                    {analysisInsights.length > 0 && (
-                                        <div className="space-y-2">
-                                            <h5 className="text-sm font-medium text-gray-300">
-                                                분석 결과 및 제안
-                                            </h5>
-                                            {analysisInsights.map(
-                                                (insight, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className={`p-3 rounded-lg border text-sm ${
-                                                            insight.type ===
-                                                            "error"
-                                                                ? "bg-red-900/30 border-red-700"
-                                                                : insight.type ===
-                                                                  "warning"
-                                                                ? "bg-yellow-900/30 border-yellow-700"
-                                                                : insight.type ===
-                                                                  "success"
-                                                                ? "bg-green-900/30 border-green-700"
-                                                                : "bg-blue-900/30 border-blue-700"
-                                                        }`}
-                                                    >
-                                                        <div
-                                                            className={`font-medium mb-1 ${
-                                                                insight.type ===
-                                                                "error"
-                                                                    ? "text-red-400"
-                                                                    : insight.type ===
-                                                                      "warning"
-                                                                    ? "text-yellow-400"
-                                                                    : insight.type ===
-                                                                      "success"
-                                                                    ? "text-green-400"
-                                                                    : "text-blue-400"
-                                                            }`}
-                                                        >
-                                                            {insight.title}
-                                                        </div>
-                                                        <div
-                                                            className={
-                                                                insight.type ===
-                                                                "error"
-                                                                    ? "text-red-300"
-                                                                    : insight.type ===
-                                                                      "warning"
-                                                                    ? "text-yellow-300"
-                                                                    : insight.type ===
-                                                                      "success"
-                                                                    ? "text-green-300"
-                                                                    : "text-blue-300"
-                                                            }
-                                                        >
-                                                            {insight.message}
-                                                        </div>
-                                                        <div className="text-gray-400 text-xs mt-1">
-                                                            💡{" "}
-                                                            {insight.suggestion}
-                                                        </div>
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* 최적화 제안 */}
-                                    {simulationState.result
-                                        .optimizationSuggestions.length > 0 && (
-                                        <div className="space-y-2">
-                                            <h5 className="text-sm font-medium text-gray-300">
-                                                AI 최적화 제안
-                                            </h5>
-                                            {simulationState.result.optimizationSuggestions
-                                                .slice(0, 2)
-                                                .map((suggestion, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className={`p-3 rounded-lg border text-sm ${
-                                                            suggestion.priority ===
-                                                            "high"
-                                                                ? "bg-purple-900/30 border-purple-700"
-                                                                : "bg-gray-750 border-gray-600"
-                                                        }`}
-                                                    >
-                                                        <div
-                                                            className={`font-medium mb-1 ${
-                                                                suggestion.priority ===
-                                                                "high"
-                                                                    ? "text-purple-400"
-                                                                    : "text-gray-300"
-                                                            }`}
-                                                        >
-                                                            우선순위:{" "}
-                                                            {suggestion.priority ===
-                                                            "high"
-                                                                ? "높음"
-                                                                : suggestion.priority ===
-                                                                  "medium"
-                                                                ? "보통"
-                                                                : "낮음"}
-                                                        </div>
-                                                        <div className="text-gray-300 mb-2">
-                                                            {
-                                                                suggestion.description
-                                                            }
-                                                        </div>
-                                                        <div className="text-gray-400 text-xs">
-                                                            예상 개선:{" "}
-                                                            {Object.entries(
-                                                                suggestion.expectedImpact
-                                                            )
-                                                                .filter(
-                                                                    ([
-                                                                        _,
-                                                                        value,
-                                                                    ]) =>
-                                                                        value !==
-                                                                        0
-                                                                )
-                                                                .map(
-                                                                    ([
-                                                                        key,
-                                                                        value,
-                                                                    ]) =>
-                                                                        `${key} ${
-                                                                            value >
-                                                                            0
-                                                                                ? "+"
-                                                                                : ""
-                                                                        }${value}%`
-                                                                )
-                                                                .join(", ")}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    )}
                                 </div>
                             ) : (
                                 <div className="text-center py-8">

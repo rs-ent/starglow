@@ -4,11 +4,9 @@ import { memo, useState, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Trophy, Eye } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
-
-import { getUserParticipationDetails } from "@/app/actions/raffles/onchain/actions-read";
+import { useOnchainRafflesV2 } from "@/app/actions/raffles/onchain/hooks-v2";
 import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import RaffleOnchainParticipationLogCard from "./Raffle.Onchain.Participation.Log.Card";
@@ -47,63 +45,48 @@ export default memo(function RaffleOnchainParticipationLog({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const {
-        data: infiniteData,
-        isLoading: isInfiniteLoading,
-        isError: infiniteError,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage,
-        refetch: refetchUserParticipationDetails,
-    } = useInfiniteQuery({
-        queryKey: [
-            "userParticipationDetails",
+        userParticipation: participationData,
+        isUserParticipationLoading: isParticipationLoading,
+        isUserParticipationError: participationError,
+        refetchUserParticipation: refetchUserParticipationDetails,
+    } = useOnchainRafflesV2({
+        getUserParticipationInput: {
             contractAddress,
             raffleId,
-            session?.user?.id,
-        ],
-        queryFn: ({ pageParam = 1 }) =>
-            getUserParticipationDetails({
-                contractAddress,
-                raffleId,
-                userId: session?.user?.id || "",
-                page: pageParam as number,
-                limit: 20,
-            }),
-        enabled: Boolean(
-            session?.user?.id && contractAddress && raffleId && isOpen
-        ),
-        initialPageParam: 1,
-        getNextPageParam: (lastPage: any) => {
-            if (!lastPage?.data?.hasNextPage) return undefined;
-            return lastPage.data.currentPage + 1;
+            playerId: session?.player?.id || "",
         },
-        staleTime: 1000 * 60 * 5,
-        gcTime: 1000 * 60 * 30,
     });
 
     const { allParticipations, participationSummary, unrevealed } =
         useMemo(() => {
-            const pages = infiniteData?.pages || [];
-            const participations = pages.flatMap(
-                (page) => page?.data?.participations || []
-            );
-            const totalCount = pages[0]?.data?.totalCount || 0;
+            if (!participationData?.success || !participationData?.data) {
+                return {
+                    allParticipations: [],
+                    participationSummary: {
+                        totalParticipations: 0,
+                        revealedCount: 0,
+                        unrevealedCount: 0,
+                        totalWins: 0,
+                        winners: [],
+                    },
+                    unrevealed: [],
+                };
+            }
+
+            const data = participationData.data;
+            const participations = data.participations || [];
 
             const unrevealedData = participations.filter(
-                (p: any) => p.hasLotteryResult && !p.claimed
+                (p) => p.hasLotteryResult && !p.claimed
             );
 
             const summary = {
-                totalParticipations: totalCount,
-                revealedCount: participations.filter(
-                    (p: any) => p.hasLotteryResult && p.claimed
-                ).length,
-                unrevealedCount: unrevealedData.length,
-                totalWins: participations.filter(
-                    (p: any) => p.hasLotteryResult && p.prizeIndex > 0
-                ).length,
+                totalParticipations: data.participationCount,
+                revealedCount: data.revealedCount,
+                unrevealedCount: data.unrevealedCount,
+                totalWins: data.totalWins,
                 winners: participations.filter(
-                    (p: any) => p.hasLotteryResult && p.prizeIndex > 0
+                    (p) => p.hasLotteryResult && p.prizeIndex > 0
                 ),
             };
 
@@ -112,24 +95,7 @@ export default memo(function RaffleOnchainParticipationLog({
                 participationSummary: summary,
                 unrevealed: unrevealedData,
             };
-        }, [infiniteData]);
-
-    const handleFetchNextPage = useCallback(async () => {
-        if (!session?.user?.id || !hasNextPage) return;
-        if (isFetchingNextPage || isInfiniteLoading) return;
-
-        try {
-            await fetchNextPage();
-        } catch (error) {
-            console.error("Failed to fetch next page:", error);
-        }
-    }, [
-        session?.user?.id,
-        hasNextPage,
-        isFetchingNextPage,
-        isInfiniteLoading,
-        fetchNextPage,
-    ]);
+        }, [participationData]);
 
     const handleRevealSingle = useCallback(
         async (participantId: string) => {
@@ -280,14 +246,13 @@ export default memo(function RaffleOnchainParticipationLog({
                         ref={scrollContainerRef}
                         className={cn("flex-1 overflow-y-auto py-2 px-1")}
                     >
-                        {isInfiniteLoading &&
-                            allParticipations.length === 0 && (
-                                <div className="py-8">
-                                    <PartialLoading text="Loading participation records..." />
-                                </div>
-                            )}
+                        {isParticipationLoading && (
+                            <div className="py-8">
+                                <PartialLoading text="Loading participation records..." />
+                            </div>
+                        )}
 
-                        {infiniteError && (
+                        {participationError && (
                             <div className="py-8 text-center">
                                 <p className="text-red-400">
                                     Failed to load participation records
@@ -303,8 +268,8 @@ export default memo(function RaffleOnchainParticipationLog({
                             </div>
                         )}
 
-                        {!isInfiniteLoading &&
-                            !infiniteError &&
+                        {!isParticipationLoading &&
+                            !participationError &&
                             allParticipations.length === 0 && (
                                 <motion.div
                                     initial={{ scale: 0.8, opacity: 0 }}
@@ -347,36 +312,13 @@ export default memo(function RaffleOnchainParticipationLog({
                                     )
                                 )}
 
-                                <div className="py-4 flex justify-center">
-                                    {hasNextPage ? (
-                                        <motion.button
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            disabled={isFetchingNextPage}
-                                            onClick={handleFetchNextPage}
-                                            className={cn(
-                                                "px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 text-white font-bold rounded-xl transition-all duration-300 flex items-center gap-2",
-                                                getResponsiveClass(20)
-                                                    .textClass,
-                                                getResponsiveClass(25)
-                                                    .paddingClass
-                                            )}
-                                        >
-                                            {isFetchingNextPage ? (
-                                                <>
-                                                    <div className="animate-spin rounded-full border-b-2 border-white w-4 h-4"></div>
-                                                    Loading...
-                                                </>
-                                            ) : (
-                                                "Load More Records"
-                                            )}
-                                        </motion.button>
-                                    ) : allParticipations.length > 0 ? (
+                                {allParticipations.length > 0 && (
+                                    <div className="py-4 flex justify-center">
                                         <span className="text-white/40 text-sm">
                                             🎉 All records loaded!
                                         </span>
-                                    ) : null}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

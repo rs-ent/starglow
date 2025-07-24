@@ -15,6 +15,7 @@ import type { BlockchainNetwork, EscrowWallet } from "@prisma/client";
 import type { StoryConfig, SupportedChainIds } from "@story-protocol/core-sdk";
 import type { Chain, PublicClient, WalletClient } from "viem";
 import type { Account } from "viem/accounts";
+import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
 
 const ADMIN_KEY = process.env.WEB3STORAGE_ADMIN_KEY;
 
@@ -390,6 +391,7 @@ export async function fetchWalletClient(input: fetchWalletClientInput) {
         network = input.network;
     } else if (input.networkId) {
         network = await prisma.blockchainNetwork.findUnique({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { id: input.networkId },
             select: {
                 id: true,
@@ -407,6 +409,7 @@ export async function fetchWalletClient(input: fetchWalletClientInput) {
         wallet = input.wallet;
     } else if (input.walletAddress) {
         wallet = await prisma.escrowWallet.findUnique({
+            cacheStrategy: getCacheStrategy("tenMinutes"),
             where: { address: input.walletAddress },
         });
     }

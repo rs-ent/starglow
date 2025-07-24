@@ -9,7 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { useRaffles } from "@/app/actions/raffles/hooks";
-import { useOnchainRaffles } from "@/app/actions/raffles/onchain/hooks";
+import { useOnchainRafflesV2 } from "@/app/actions/raffles/onchain/hooks-v2";
 import RafflesOnchainListCard from "./onchain/Raffles.Onchain.List.Card";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -45,9 +45,9 @@ export default memo(function RafflesList() {
         },
     });
 
-    const { onchainRaffles, isOnchainRafflesLoading, isOnchainRafflesError } =
-        useOnchainRaffles({
-            getOnchainRafflesInput: {
+    const { allRaffles, isAllRafflesLoading, isAllRafflesError } =
+        useOnchainRafflesV2({
+            getAllRafflesInput: {
                 isActive: "ACTIVE",
             },
         });
@@ -265,8 +265,7 @@ export default memo(function RafflesList() {
                                 key: "onchain",
                                 label: "Onchain",
                                 icon: Zap,
-                                count:
-                                    onchainRaffles?.data?.raffles?.length || 0,
+                                count: allRaffles?.data?.length || 0,
                             },
                         ].map((tab) => (
                             <TabButton
@@ -308,11 +307,11 @@ export default memo(function RafflesList() {
                         ) : (
                             <EmptyState tabType="offchain" />
                         )
-                    ) : isOnchainRafflesLoading ? (
+                    ) : isAllRafflesLoading ? (
                         <OnchainLoadingState />
-                    ) : isOnchainRafflesError ? (
+                    ) : isAllRafflesError ? (
                         <OnchainErrorState />
-                    ) : (onchainRaffles?.data?.raffles?.length || 0) > 0 ? (
+                    ) : (allRaffles?.data?.length || 0) > 0 ? (
                         <motion.div
                             key="onchain-raffles"
                             initial={{ opacity: 0, x: 20 }}
@@ -325,7 +324,7 @@ export default memo(function RafflesList() {
                                 getResponsiveClass(50).gapClass
                             )}
                         >
-                            {onchainRaffles?.data?.raffles?.map(
+                            {allRaffles?.data?.map(
                                 (raffle: any, index: number) => (
                                     <motion.div
                                         key={`${raffle.contractAddress}-${raffle.raffleId}`}
