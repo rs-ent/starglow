@@ -12,10 +12,7 @@ import { safeBigIntToNumber } from "@/lib/utils/format";
 import rafflesJson from "@/web3/artifacts/contracts/Raffles_v2.sol/RafflesV2.json";
 import { getDefaultUserWalletAddress } from "@/app/story/userWallet/actions";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
-import {
-    validatePlayerAsset,
-    updatePlayerAsset,
-} from "../../playerAssets/actions";
+import { updatePlayerAsset } from "../../playerAssets/actions";
 import { initialTransfer } from "@/app/story/transfer/actions";
 
 const abi = rafflesJson.abi;
@@ -217,8 +214,7 @@ export async function participateV2(
             hash: participateTx as `0x${string}`,
         });
 
-        // 참여 이벤트에서 정보 추출
-        let participationData = {
+        const participationData = {
             participantId: "0",
             ticketNumber: 0,
             hasResult: false,
@@ -575,7 +571,6 @@ export interface PrizeData {
     assetId?: string;
     collectionAddress?: string;
 }
-
 
 export interface DistributePrizeInput {
     playerId: string;

@@ -563,46 +563,17 @@ export async function getChain(network: BlockchainNetwork): Promise<Chain> {
 export async function deployContract(
     input: DeployContractInput
 ): Promise<DeployContractResult> {
-    console.log("[deployContract] 🚀 Starting contract deployment...");
-
     const { walletId, network, abi, bytecode, args } = input;
 
-    console.log("[deployContract] Input parameters:", {
-        walletId,
-        networkName: network.name,
-        chainId: network.chainId,
-        rpcUrl: network.rpcUrl
-            ? network.rpcUrl.substring(0, 50) + "..."
-            : "undefined",
-        abiLength: abi?.length || 0,
-        bytecodeLength: bytecode?.length || 0,
-        argsLength: args?.length || 0,
-    });
-
     try {
-        // Step 1: 체인 설정 생성
-        console.log(
-            "[deployContract] 📡 Step 1: Creating chain configuration..."
-        );
         const chain = await getChain(network);
-        console.log("[deployContract] ✅ Chain created:", {
-            id: chain.id,
-            name: chain.name,
-            rpcUrl: chain.rpcUrls.default.http[0],
-        });
 
-        // Step 2: Public Client 생성
-        console.log("[deployContract] 📡 Step 2: Creating public client...");
         const publicClient = createPublicClient({
             chain,
             transport: http(),
         });
-        console.log("[deployContract] ✅ Public client created");
 
         // Step 3: 에스크로 지갑 조회 및 개인키 복호화
-        console.log(
-            "[deployContract] 🔑 Step 3: Fetching escrow wallet with private key..."
-        );
         const escrowWallet = await getEscrowWalletWithPrivateKey(walletId);
 
         if (!escrowWallet.success || !escrowWallet.data) {
@@ -613,16 +584,7 @@ export async function deployContract(
             throw new Error(`Escrow wallet not found: ${escrowWallet.error}`);
         }
 
-        console.log("[deployContract] ✅ Escrow wallet fetched:", {
-            walletId: escrowWallet.data.id,
-            address: escrowWallet.data.address,
-            hasPrivateKey: !!escrowWallet.data.privateKey,
-        });
-
         // Step 4: 개인키 형식 확인 및 계정 생성
-        console.log(
-            "[deployContract] 🔐 Step 4: Creating account from private key..."
-        );
         const privateKey = escrowWallet.data.privateKey;
 
         if (!privateKey) {
@@ -634,18 +596,9 @@ export async function deployContract(
             ? privateKey
             : `0x${privateKey}`;
 
-        console.log("[deployContract] Private key format check:", {
-            originalLength: privateKey.length,
-            hasPrefix: privateKey.startsWith("0x"),
-            formattedLength: formattedPrivateKey.length,
-        });
-
         let account;
         try {
             account = privateKeyToAccount(formattedPrivateKey as Address);
-            console.log("[deployContract] ✅ Account created:", {
-                address: account.address,
-            });
         } catch (accountError) {
             console.error(
                 "[deployContract] ❌ Account creation failed:",
@@ -657,7 +610,6 @@ export async function deployContract(
         }
 
         // Step 5: Wallet Client 생성
-        console.log("[deployContract] 📱 Step 5: Creating wallet client...");
         let walletClient;
         try {
             walletClient = createWalletClient({
@@ -665,7 +617,6 @@ export async function deployContract(
                 chain,
                 transport: http(),
             });
-            console.log("[deployContract] ✅ Wallet client created");
         } catch (walletError) {
             console.error(
                 "[deployContract] ❌ Wallet client creation failed:",
@@ -675,17 +626,11 @@ export async function deployContract(
         }
 
         // Step 6: 잔액 확인 (선택사항, 정보용)
-        console.log("[deployContract] 💰 Step 6: Checking wallet balance...");
         try {
             const balance = await publicClient.getBalance({
                 address: account.address,
             });
             const balanceEth = Number(balance) / 1e18;
-            console.log("[deployContract] 💰 Wallet balance:", {
-                wei: balance.toString(),
-                eth: balanceEth.toFixed(6),
-                symbol: network.symbol,
-            });
 
             if (balanceEth < 0.001) {
                 console.warn(
@@ -699,29 +644,7 @@ export async function deployContract(
             );
         }
 
-        // Step 7: 가스 가격 확인
-        console.log("[deployContract] ⛽ Step 7: Checking gas price...");
-        try {
-            const gasPrice = await publicClient.getGasPrice();
-            const gasPriceGwei = Number(gasPrice) / 1e9;
-            console.log("[deployContract] ⛽ Current gas price:", {
-                wei: gasPrice.toString(),
-                gwei: gasPriceGwei.toFixed(2),
-            });
-        } catch (gasPriceError) {
-            console.warn(
-                "[deployContract] ⚠️ Gas price check failed (continuing anyway):",
-                gasPriceError
-            );
-        }
-
         // Step 8: 컨트랙트 배포
-        console.log("[deployContract] 🚀 Step 8: Deploying contract...");
-        console.log("[deployContract] Deployment parameters:", {
-            abiEntries: abi.length,
-            bytecodeSize: `${Math.round(bytecode.length / 1024)}KB`,
-            constructorArgs: args || [],
-        });
 
         let hash;
         try {
@@ -740,16 +663,6 @@ export async function deployContract(
 
                 // 복잡한 컨트랙트를 위한 가스 리미트 증가 (V2는 49KB)
                 gas = BigInt("15000000"); // 15M gas (일반적으로 8M인데 V2는 더 필요)
-
-                console.log(
-                    "[deployContract] ⛽ Adjusting gas settings for complex V2 contract:",
-                    {
-                        current: currentGasPrice.toString(),
-                        minimum: minGasPrice.toString(),
-                        using: gasPrice.toString(),
-                        gasLimit: gas.toString(),
-                    }
-                );
             }
 
             hash = await walletClient.deployContract({
@@ -759,10 +672,6 @@ export async function deployContract(
                 gasPrice,
                 gas, // 가스 리미트 설정
             });
-            console.log(
-                "[deployContract] ✅ Contract deployment transaction submitted!"
-            );
-            console.log("[deployContract] Transaction hash:", hash);
         } catch (deployError) {
             console.error(
                 "[deployContract] ❌ Contract deployment failed:",
@@ -795,15 +704,6 @@ export async function deployContract(
         }
 
         // Step 9: 트랜잭션 영수증 대기 (강화된 로직)
-        console.log(
-            "[deployContract] 📦 Step 9: Waiting for transaction receipt..."
-        );
-        console.log(
-            "[deployContract] This may take several seconds to minutes depending on network..."
-        );
-        console.log(
-            `[deployContract] 🔗 Track progress: ${network.explorerUrl}/tx/${hash}`
-        );
 
         let receipt: Awaited<
             ReturnType<typeof publicClient.waitForTransactionReceipt>
@@ -813,24 +713,11 @@ export async function deployContract(
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                console.log(
-                    `[deployContract] 🔄 Attempt ${attempt}/${maxAttempts}: Waiting for receipt...`
-                );
-
                 receipt = await publicClient.waitForTransactionReceipt({
                     hash,
                     timeout: baseTimeout + (attempt - 1) * 120000, // 5분, 7분, 9분
                 });
 
-                console.log("[deployContract] ✅ Transaction confirmed!");
-                console.log("[deployContract] Receipt details:", {
-                    blockNumber: receipt.blockNumber,
-                    gasUsed: receipt.gasUsed.toString(),
-                    effectiveGasPrice:
-                        receipt.effectiveGasPrice?.toString() || "N/A",
-                    status: receipt.status,
-                    contractAddress: receipt.contractAddress,
-                });
                 break; // 성공하면 루프 종료
             } catch (receiptError) {
                 console.warn(
@@ -848,26 +735,16 @@ export async function deployContract(
 
                     // 트랜잭션 상태를 한 번 더 확인
                     try {
-                        console.log(
-                            "[deployContract] 🔍 Final check: Attempting to get transaction..."
-                        );
                         const transaction = await publicClient.getTransaction({
                             hash,
                         });
 
                         if (transaction.blockNumber) {
-                            console.log(
-                                "[deployContract] 🎯 Transaction found in block:",
-                                transaction.blockNumber
-                            );
-
                             // 트랜잭션이 블록에 포함되었다면 receipt를 다시 시도
                             receipt = await publicClient.getTransactionReceipt({
                                 hash,
                             });
-                            console.log(
-                                "[deployContract] ✅ Retrieved receipt manually!"
-                            );
+
                             break;
                         }
                     } catch (fallbackError) {
@@ -888,19 +765,12 @@ export async function deployContract(
                         `Transaction receipt failed after ${maxAttempts} attempts. Transaction hash: ${hash}. Please check the explorer: ${network.explorerUrl}/tx/${hash}`
                     );
                 } else {
-                    // 다음 시도를 위해 잠시 대기
-                    console.log(
-                        `[deployContract] ⏳ Waiting 30 seconds before retry...`
-                    );
                     await new Promise((resolve) => setTimeout(resolve, 30000));
                 }
             }
         }
 
         // Step 10: 결과 검증
-        console.log(
-            "[deployContract] ✅ Step 10: Validating deployment result..."
-        );
 
         if (!receipt) {
             console.error(
@@ -934,13 +804,6 @@ export async function deployContract(
             hash,
             contractAddress: receipt.contractAddress as Address,
         };
-
-        console.log("[deployContract] 🎉 Deployment completed successfully!");
-        console.log("[deployContract] Final result:", {
-            transactionHash: result.hash,
-            contractAddress: result.contractAddress,
-            explorerUrl: `${network.explorerUrl}/address/${result.contractAddress}`,
-        });
 
         return result;
     } catch (error) {

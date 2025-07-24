@@ -25,8 +25,6 @@ function RafflesOnchainListCard({
         },
     });
 
-    console.log(raffleCardInfo);
-
     const coreData = useMemo(() => {
         return raffleCardInfo?.data;
     }, [raffleCardInfo]);

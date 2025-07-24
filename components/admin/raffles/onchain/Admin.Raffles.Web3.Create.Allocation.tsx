@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
     FaCheck,
     FaCog,
@@ -9,10 +9,7 @@ import {
     FaSpinner,
     FaExclamationTriangle,
     FaTrash,
-    FaUndo,
-    FaSync,
     FaEye,
-    FaTimes,
 } from "react-icons/fa";
 import { useToast } from "@/app/hooks/useToast";
 import {
@@ -21,7 +18,6 @@ import {
     deallocatePrizeV2,
     getRaffleAllocationSummaryV2,
     getTicketAllocationRangeV2,
-    verifyTicketAllocationV2,
 } from "@/app/actions/raffles/onchain/actions-admin-v2";
 import { getFullRaffleInfoV2 } from "@/app/actions/raffles/onchain/actions-read-v2";
 
@@ -63,56 +59,9 @@ export function AdminRafflesWeb3CreateAllocation({
     );
     const [activating, setActivating] = useState(false);
     const [isReadyToActivate, setIsReadyToActivate] = useState(false);
-    const [resetting, setResetting] = useState(false);
-    const [reallocating, setReallocating] = useState(false);
     const [allocationSummary, setAllocationSummary] =
         useState<AllocationSummary | null>(null);
     const [showTicketDetails, setShowTicketDetails] = useState(false);
-
-    const loadRaffleInfo = useCallback(async () => {
-        try {
-            setLoading(true);
-            const result = await getFullRaffleInfoV2({
-                contractAddress,
-                raffleId,
-            });
-
-            if (result.success && result.data) {
-                setRaffleInfo(result.data);
-
-                const statuses = result.data.prizes.map(
-                    (prize: any, index: number) => ({
-                        index,
-                        allocated: prize.allocated,
-                        allocating: false,
-                        deallocating: false,
-                        error: null,
-                    })
-                );
-
-                setPrizeStatuses(statuses);
-
-                const allAllocated = statuses.every(
-                    (status) => status.allocated
-                );
-                setIsReadyToActivate(
-                    allAllocated && result.data.status.readyToActive
-                );
-
-                await loadAllocationSummary();
-                await loadTicketRanges(statuses);
-            } else {
-                toast.error(
-                    result.error || "래플 정보를 불러오는데 실패했습니다."
-                );
-            }
-        } catch (error) {
-            console.error("Error loading raffle info:", error);
-            toast.error("래플 정보를 불러오는데 실패했습니다.");
-        } finally {
-            setLoading(false);
-        }
-    }, [contractAddress, raffleId, toast]);
 
     const loadAllocationSummary = useCallback(async () => {
         try {
@@ -173,6 +122,57 @@ export function AdminRafflesWeb3CreateAllocation({
         [contractAddress, raffleId]
     );
 
+    const loadRaffleInfo = useCallback(async () => {
+        try {
+            setLoading(true);
+            const result = await getFullRaffleInfoV2({
+                contractAddress,
+                raffleId,
+            });
+
+            if (result.success && result.data) {
+                setRaffleInfo(result.data);
+
+                const statuses = result.data.prizes.map(
+                    (prize: any, index: number) => ({
+                        index,
+                        allocated: prize.allocated,
+                        allocating: false,
+                        deallocating: false,
+                        error: null,
+                    })
+                );
+
+                setPrizeStatuses(statuses);
+
+                const allAllocated = statuses.every(
+                    (status) => status.allocated
+                );
+                setIsReadyToActivate(
+                    allAllocated && result.data.status.readyToActive
+                );
+
+                await loadAllocationSummary();
+                await loadTicketRanges(statuses);
+            } else {
+                toast.error(
+                    result.error || "래플 정보를 불러오는데 실패했습니다."
+                );
+            }
+        } catch (error) {
+            console.error("Error loading raffle info:", error);
+            toast.error("래플 정보를 불러오는데 실패했습니다.");
+        } finally {
+            setLoading(false);
+        }
+    }, [
+        contractAddress,
+        raffleId,
+        toast,
+        loadAllocationSummary,
+        loadTicketRanges,
+    ]);
+
     const validateAllocation = useCallback(
         (prizeIndex: number): { valid: boolean; warning?: string } => {
             if (!raffleInfo?.prizes[prizeIndex]) {
@@ -182,7 +182,6 @@ export function AdminRafflesWeb3CreateAllocation({
                 };
             }
 
-            const prize = raffleInfo.prizes[prizeIndex];
             const status = prizeStatuses[prizeIndex];
 
             if (status?.allocated) {
@@ -225,8 +224,6 @@ export function AdminRafflesWeb3CreateAllocation({
             );
 
             try {
-                console.log(`🚀 Starting allocation for prize ${prizeIndex}`);
-
                 const result = await allocatePrizeV2({
                     contractAddress,
                     raffleId,
@@ -234,10 +231,6 @@ export function AdminRafflesWeb3CreateAllocation({
                 });
 
                 if (result.success) {
-                    console.log(
-                        `✅ Prize ${prizeIndex} allocation completed successfully`
-                    );
-
                     toast.success(`상품 ${prizeIndex + 1} 할당 완료`);
 
                     if (result.data?.allPrizesAllocated) {

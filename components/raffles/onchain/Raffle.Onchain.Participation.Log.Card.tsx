@@ -7,6 +7,9 @@ import { formatDate } from "@/lib/utils/format";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
 import { useToast } from "@/app/hooks/useToast";
+import type { PrizeData } from "@/app/actions/raffles/onchain/actions-write-v2";
+import Image from "next/image";
+
 const generateLotteryNumber = (ticketNumber: number) => {
     const ticketStr = ticketNumber.toString().padStart(6, "0");
     return ticketStr.replace(/(\d{3})(\d{3})/, "$1-$2");
@@ -21,6 +24,7 @@ interface ParticipationRecord {
     claimed: boolean;
     drawnAt: number;
     claimedAt: number;
+    prize: PrizeData;
 }
 
 interface RaffleOnchainParticipationLogCardProps {
@@ -28,7 +32,7 @@ interface RaffleOnchainParticipationLogCardProps {
     index: number;
     onReveal: (participantId: string) => Promise<void>;
     selectedRecord: string | null;
-    contractAddress: string;
+    prize: PrizeData | null;
 }
 
 export default memo(function RaffleOnchainParticipationLogCard({
@@ -36,7 +40,7 @@ export default memo(function RaffleOnchainParticipationLogCard({
     index,
     onReveal,
     selectedRecord,
-    contractAddress,
+    prize,
 }: RaffleOnchainParticipationLogCardProps) {
     const toast = useToast();
     const isDrawn = record.hasLotteryResult;
@@ -187,23 +191,26 @@ export default memo(function RaffleOnchainParticipationLogCard({
 
                     {isRevealed && hasWon ? (
                         <div className="flex items-center gap-1">
-                            <div className="text-right font-main">
+                            <div className="flex flex-row items-center justify-end gap-1 text-right font-main">
+                                {prize?.imageUrl && (
+                                    <Image
+                                        src={prize?.imageUrl || ""}
+                                        alt={prize?.title || ""}
+                                        width={24}
+                                        height={24}
+                                        className={cn(
+                                            getResponsiveClass(25).frameClass
+                                        )}
+                                    />
+                                )}
                                 <div
                                     className={cn(
                                         "font-bold text-green-400 text-lg",
                                         getResponsiveClass(20).textClass
                                     )}
                                 >
-                                    {/* 🚨 WARNING: prizeIndex는 원본 배열 인덱스임. order 기반 순서 표시 필요 */}
-                                    Prize #{record.prizeIndex + 1}
-                                </div>
-                                <div
-                                    className={cn(
-                                        "text-sm text-white/60",
-                                        getResponsiveClass(10).textClass
-                                    )}
-                                >
-                                    {record.claimed ? "Claimed" : "Unclaimed"}
+                                    {prize?.title ||
+                                        `Prize #${record.prizeIndex + 1}`}
                                 </div>
                             </div>
                         </div>

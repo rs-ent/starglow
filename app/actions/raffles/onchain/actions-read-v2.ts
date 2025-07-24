@@ -9,10 +9,10 @@ import { prisma } from "@/lib/prisma/client";
 import { fetchPublicClient } from "@/app/story/client";
 import { safeBigIntToNumber } from "@/lib/utils/format";
 import { getCacheStrategy } from "@/lib/prisma/cacheStrategies";
-import { getDefaultUserWalletAddress } from "@/app/story/userWallet/actions";
 
 import rafflesJson from "@/web3/artifacts/contracts/Raffles_v2.sol/RafflesV2.json";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { getDefaultUserWalletAddress } from "@/app/story/userWallet/actions";
 
 const abi = rafflesJson.abi;
 
@@ -655,7 +655,6 @@ export async function getFullRaffleInfoV2(
                         remainingTickets: safeBigIntToNumber(remainingTickets),
                     };
 
-                    console.log("Successfully parsed getRaffle result");
                     return {
                         success: true,
                         data: fullRaffleInfo,
@@ -668,7 +667,6 @@ export async function getFullRaffleInfoV2(
                 );
             }
 
-            console.log("Using fallback method with getRaffleListCardInfo...");
             const cardInfo = await (
                 raffleContract.read as any
             ).getRaffleListCardInfo([BigInt(input.raffleId)]);
@@ -721,7 +719,6 @@ export async function getFullRaffleInfoV2(
                 remainingTickets: safeBigIntToNumber(cardInfo.remainingTickets),
             };
 
-            console.log("CardInfo fallback successful");
             return {
                 success: true,
                 data: fullRaffleInfo,

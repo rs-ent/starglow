@@ -164,7 +164,7 @@ export default memo(function RaffleOnchainPrizes({
             prizeAnalysis: analysis,
             totalQuantity: total,
         };
-    }, [data?.length, data]);
+    }, [data]);
 
     if (!data) {
         return <PrizesLoadingState />;

@@ -183,12 +183,9 @@ export default memo(function RaffleOnchain({
         scratchCardSize: DEFAULT_SCRATCH_CARD_SIZE,
     });
 
-    const handleParticipationSuccess = useCallback(
-        (ticket: TicketData, isInstantDraw: boolean) => {
-            dispatch({ type: "OPEN_TICKET", payload: ticket });
-        },
-        []
-    );
+    const handleParticipationSuccess = useCallback((ticket: TicketData) => {
+        dispatch({ type: "OPEN_TICKET", payload: ticket });
+    }, []);
 
     const handleInstantDraw = useCallback(() => {
         const size = getScratchCardSize();
@@ -254,7 +251,6 @@ export default memo(function RaffleOnchain({
     }, [raffleData?.success, raffleData?.data]);
 
     const scratchPrizeData = useMemo(() => {
-        console.log("raffleData.memo?.prizes", raffleDataMemo?.prizes);
         return createPrizeData(
             modalState.ticketData?.prizeWon,
             raffleDataMemo?.prizes,

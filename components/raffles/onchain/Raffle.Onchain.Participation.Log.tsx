@@ -2,7 +2,7 @@
 
 import { memo, useState, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Trophy, Eye } from "lucide-react";
+import { X, Trophy } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { getResponsiveClass } from "@/lib/utils/responsiveClass";
 import { cn } from "@/lib/utils/tailwind";
@@ -10,6 +10,7 @@ import { useOnchainRafflesV2 } from "@/app/actions/raffles/onchain/hooks-v2";
 import { useToast } from "@/app/hooks/useToast";
 import PartialLoading from "@/components/atoms/PartialLoading";
 import RaffleOnchainParticipationLogCard from "./Raffle.Onchain.Participation.Log.Card";
+import type { PrizeData } from "@/app/actions/raffles/onchain/actions-write-v2";
 
 const safeBigIntToNumber = (value: any): number => {
     if (typeof value === "bigint") {
@@ -30,6 +31,7 @@ interface RaffleOnchainParticipationLogProps {
     contractAddress: string;
     raffleId: string;
     raffleTitle: string;
+    prizesData: PrizeData[];
 }
 
 export default memo(function RaffleOnchainParticipationLog({
@@ -38,6 +40,7 @@ export default memo(function RaffleOnchainParticipationLog({
     contractAddress,
     raffleId,
     raffleTitle,
+    prizesData,
 }: RaffleOnchainParticipationLogProps) {
     const { data: session } = useSession();
     const toast = useToast();
@@ -57,45 +60,38 @@ export default memo(function RaffleOnchainParticipationLog({
         },
     });
 
-    const { allParticipations, participationSummary, unrevealed } =
-        useMemo(() => {
-            if (!participationData?.success || !participationData?.data) {
-                return {
-                    allParticipations: [],
-                    participationSummary: {
-                        totalParticipations: 0,
-                        revealedCount: 0,
-                        unrevealedCount: 0,
-                        totalWins: 0,
-                        winners: [],
-                    },
-                    unrevealed: [],
-                };
-            }
-
-            const data = participationData.data;
-            const participations = data.participations || [];
-
-            const unrevealedData = participations.filter(
-                (p) => p.hasLotteryResult && !p.claimed
-            );
-
-            const summary = {
-                totalParticipations: data.participationCount,
-                revealedCount: data.revealedCount,
-                unrevealedCount: data.unrevealedCount,
-                totalWins: data.totalWins,
-                winners: participations.filter(
-                    (p) => p.hasLotteryResult && p.prizeIndex > 0
-                ),
-            };
-
+    const { allParticipations, participationSummary } = useMemo(() => {
+        if (!participationData?.success || !participationData?.data) {
             return {
-                allParticipations: participations,
-                participationSummary: summary,
-                unrevealed: unrevealedData,
+                allParticipations: [],
+                participationSummary: {
+                    totalParticipations: 0,
+                    revealedCount: 0,
+                    unrevealedCount: 0,
+                    totalWins: 0,
+                    winners: [],
+                },
             };
-        }, [participationData]);
+        }
+
+        const data = participationData.data;
+        const participations = data.participations || [];
+
+        const summary = {
+            totalParticipations: data.participationCount,
+            revealedCount: data.revealedCount,
+            unrevealedCount: data.unrevealedCount,
+            totalWins: data.totalWins,
+            winners: participations.filter(
+                (p) => p.hasLotteryResult && p.prizeIndex > 0
+            ),
+        };
+
+        return {
+            allParticipations: participations,
+            participationSummary: summary,
+        };
+    }, [participationData]);
 
     const handleRevealSingle = useCallback(
         async (participantId: string) => {
@@ -113,17 +109,6 @@ export default memo(function RaffleOnchainParticipationLog({
         },
         [session?.user?.id, toast]
     );
-
-    const handleRevealAll = useCallback(async () => {
-        if (!session?.user?.id || unrevealed.length === 0) return;
-
-        try {
-            toast.success(`🎉 Revealed ${unrevealed.length} results!`);
-        } catch (error) {
-            console.error("Reveal all error:", error);
-            toast.error("An error occurred while revealing results");
-        }
-    }, [session?.user?.id, unrevealed.length, toast]);
 
     if (!isOpen) return null;
 
@@ -210,38 +195,6 @@ export default memo(function RaffleOnchainParticipationLog({
                         </div>
                     </motion.div>
 
-                    {unrevealed.length > 0 && (
-                        <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className={cn(
-                                "p-6 border-b border-white/10",
-                                getResponsiveClass(10).paddingClass
-                            )}
-                        >
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleRevealAll}
-                                className={cn(
-                                    "w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 text-white font-bold rounded-[12px] transition-all duration-300 flex items-center justify-center gap-2",
-                                    getResponsiveClass(25).textClass,
-                                    getResponsiveClass(30).paddingClass,
-                                    getResponsiveClass(15).marginYClass
-                                )}
-                            >
-                                <Eye
-                                    className={cn(
-                                        "w-5 h-5",
-                                        getResponsiveClass(25).frameClass
-                                    )}
-                                />
-                                Reveal All {unrevealed.length} Results
-                            </motion.button>
-                        </motion.div>
-                    )}
-
                     <div
                         ref={scrollContainerRef}
                         className={cn("flex-1 overflow-y-auto py-2 px-1")}
@@ -298,18 +251,26 @@ export default memo(function RaffleOnchainParticipationLog({
                         {allParticipations.length > 0 && (
                             <div className="space-y-3 w-full max-w-[800px] mx-auto">
                                 {allParticipations.map(
-                                    (record: any, index: number) => (
-                                        <RaffleOnchainParticipationLogCard
-                                            key={safeBigIntToNumber(
-                                                record.participantId
-                                            )}
-                                            record={record}
-                                            index={index}
-                                            onReveal={handleRevealSingle}
-                                            selectedRecord={selectedRecord}
-                                            contractAddress={contractAddress}
-                                        />
-                                    )
+                                    (record: any, index: number) => {
+                                        return (
+                                            <RaffleOnchainParticipationLogCard
+                                                key={safeBigIntToNumber(
+                                                    record.participantId
+                                                )}
+                                                record={record}
+                                                index={index}
+                                                onReveal={handleRevealSingle}
+                                                selectedRecord={selectedRecord}
+                                                prize={
+                                                    record.prizeIndex
+                                                        ? prizesData[
+                                                              record.prizeIndex
+                                                          ]
+                                                        : null
+                                                }
+                                            />
+                                        );
+                                    }
                                 )}
 
                                 {allParticipations.length > 0 && (

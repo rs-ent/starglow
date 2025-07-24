@@ -1,14 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useAssetsGet } from "@/app/actions/assets/hooks";
 import {
     FaCoins,
     FaDollarSign,
     FaInfoCircle,
     FaCheckCircle,
-    FaEye,
-    FaPiggyBank,
     FaDatabase,
 } from "react-icons/fa";
 import type { RaffleFormData } from "./Admin.Raffles.Web3.Create.Manager";
@@ -19,46 +17,6 @@ interface Props {
     updateData: (step: string, data: any) => void;
 }
 
-// 참가비 프리셋 (오프체인 에셋 기준)
-const FEE_PRESETS = [
-    {
-        id: "free",
-        name: "무료 래플",
-        description: "참가비 없음",
-        icon: FaPiggyBank,
-        color: "text-green-400",
-        amount: "0",
-        targetAudience: "대중 참여",
-    },
-    {
-        id: "low",
-        name: "저렴한 래플",
-        description: "낮은 진입 장벽",
-        icon: FaCoins,
-        color: "text-blue-400",
-        amount: "10",
-        targetAudience: "일반 사용자",
-    },
-    {
-        id: "standard",
-        name: "표준 래플",
-        description: "적당한 참가비",
-        icon: FaDollarSign,
-        color: "text-yellow-400",
-        amount: "50",
-        targetAudience: "적극적 참여자",
-    },
-    {
-        id: "premium",
-        name: "프리미엄 래플",
-        description: "높은 가치 이벤트",
-        icon: FaDatabase,
-        color: "text-purple-400",
-        amount: "100",
-        targetAudience: "VIP 고객",
-    },
-];
-
 interface Asset {
     id: string;
     name: string;
@@ -68,8 +26,6 @@ interface Asset {
 }
 
 export function AdminRafflesWeb3CreateFee({ data, updateData }: Props) {
-    const [showAdvanced, setShowAdvanced] = useState(false);
-
     // 오프체인 에셋 가져오기
     const assetsResult = useAssetsGet({ getAssetsInput: {} });
     const offchainAssets = useMemo(
@@ -98,14 +54,6 @@ export function AdminRafflesWeb3CreateFee({ data, updateData }: Props) {
         (asset: Asset) => {
             handleFeeChange("participationFeeAsset", asset.id);
             handleFeeChange("participationFeeAssetId", asset.id);
-        },
-        [handleFeeChange]
-    );
-
-    // 프리셋 적용 함수
-    const applyPreset = useCallback(
-        (preset: (typeof FEE_PRESETS)[0]) => {
-            handleFeeChange("participationFeeAmount", preset.amount);
         },
         [handleFeeChange]
     );

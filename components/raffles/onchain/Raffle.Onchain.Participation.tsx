@@ -3,16 +3,13 @@
 "use client";
 
 import { memo, useState, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
     Ticket,
     Play,
     Loader2,
     CheckCircle2,
     Zap,
-    Share2,
-    Copy,
-    ExternalLink,
     Timer,
     Coins,
     Gift,
@@ -32,7 +29,6 @@ import { BorderBeam } from "@/components/magicui/border-beam";
 import { Particles } from "@/components/magicui/particles";
 import RaffleOnchainParticipationLog from "./Raffle.Onchain.Participation.Log";
 import type { PrizeData } from "@/app/actions/raffles/onchain/actions-write-v2";
-import { usePlayerAssetSet } from "@/app/actions/playerAssets/hooks";
 
 interface TicketData {
     raffleTitle: string;
@@ -91,8 +87,6 @@ export default memo(function RaffleOnchainParticipation({
 }: RaffleOnchainParticipationProps) {
     const { data: session } = useSession();
     const toast = useToast();
-    const [showShareMenu, setShowShareMenu] = useState(false);
-    const [copySuccess, setCopySuccess] = useState(false);
     const [showParticipationLog, setShowParticipationLog] = useState(false);
 
     const {
@@ -347,44 +341,9 @@ export default memo(function RaffleOnchainParticipation({
         refetchUserParticipationCount,
         onParticipationSuccess,
         getPrizeFromIndex,
+        dataToUse,
+        distributePrizeV2,
     ]);
-
-    const handleShare = useCallback(
-        async (type: "copy" | "twitter" | "telegram") => {
-            const url = `${window.location.origin}/raffles/test/${contractAddress}/${raffleId}`;
-            const text = `Participate in the raffle: ${basicInfo?.title}! Transparent raffle with blockchain! @Starglow_world`;
-
-            switch (type) {
-                case "copy":
-                    try {
-                        await navigator.clipboard.writeText(`${text}\n${url}`);
-                        setCopySuccess(true);
-                        setTimeout(() => setCopySuccess(false), 2000);
-                    } catch (err) {
-                        console.error("Failed to copy:", err);
-                    }
-                    break;
-                case "twitter":
-                    window.open(
-                        `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                            text
-                        )}&url=${encodeURIComponent(url)}`,
-                        "_blank"
-                    );
-                    break;
-                case "telegram":
-                    window.open(
-                        `https://t.me/share/url?url=${encodeURIComponent(
-                            url
-                        )}&text=${encodeURIComponent(text)}`,
-                        "_blank"
-                    );
-                    break;
-            }
-            setShowShareMenu(false);
-        },
-        [contractAddress, raffleId, basicInfo?.title]
-    );
 
     const isPending = isParticipateV2Pending;
     const isError = isParticipateV2Error;
@@ -570,7 +529,7 @@ export default memo(function RaffleOnchainParticipation({
                                         repeat: Infinity,
                                         ease: "easeInOut",
                                     }}
-                                    className="p-3 rounded-2xl bg-purple-400/15 border-2 border-purple-400/40 backdrop-blur-sm"
+                                    className="p-2 rounded-[8px] bg-purple-400/15 border-2 border-purple-400/40 backdrop-blur-sm"
                                 >
                                     <Ticket
                                         className={cn(
@@ -598,90 +557,16 @@ export default memo(function RaffleOnchainParticipation({
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => setShowParticipationLog(true)}
-                                className="relative p-3 rounded-2xl bg-blue-400/15 border-2 border-blue-400/30 backdrop-blur-sm hover:bg-blue-400/25 transition-all duration-300"
+                                className="relative p-2 rounded-2xl bg-blue-400/15 border-2 border-blue-400/30 backdrop-blur-sm hover:bg-blue-400/25 transition-all duration-300"
                             >
                                 <Trophy
                                     className={cn(
-                                        "text-blue-300",
-                                        getResponsiveClass(20).frameClass
+                                        "text-blue-300 animate-pulse",
+                                        getResponsiveClass(25).frameClass
                                     )}
                                 />
                                 <div className="absolute inset-0 bg-blue-400/10 rounded-2xl blur-md" />
                             </motion.button>
-
-                            <div className="relative">
-                                <motion.button
-                                    whileHover={{ scale: 1.1, rotate: 5 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() =>
-                                        setShowShareMenu(!showShareMenu)
-                                    }
-                                    className="relative p-3 rounded-2xl bg-purple-400/15 border-2 border-purple-400/30 backdrop-blur-sm hover:bg-purple-400/25 transition-all duration-300"
-                                >
-                                    <Share2
-                                        className={cn(
-                                            "text-purple-300",
-                                            getResponsiveClass(20).frameClass
-                                        )}
-                                    />
-                                    <div className="absolute inset-0 bg-purple-400/10 rounded-2xl blur-md" />
-                                </motion.button>
-
-                                <AnimatePresence>
-                                    {showShareMenu && (
-                                        <motion.div
-                                            initial={{
-                                                opacity: 0,
-                                                y: 10,
-                                                scale: 0.8,
-                                            }}
-                                            animate={{
-                                                opacity: 1,
-                                                y: 0,
-                                                scale: 1,
-                                            }}
-                                            exit={{
-                                                opacity: 0,
-                                                y: 10,
-                                                scale: 0.8,
-                                            }}
-                                            className="absolute top-full right-0 mt-3 bg-slate-900/95 backdrop-blur-xl border-2 border-purple-400/30 rounded-2xl p-3 z-50 shadow-2xl shadow-purple-500/20"
-                                        >
-                                            <div className="flex flex-col gap-2 min-w-[140px]">
-                                                <button
-                                                    onClick={() =>
-                                                        handleShare("copy")
-                                                    }
-                                                    className="flex items-center gap-3 px-4 py-3 text-sm text-purple-200 hover:bg-purple-400/15 rounded-xl transition-all duration-300 hover:scale-105"
-                                                >
-                                                    <Copy className="w-4 h-4" />
-                                                    {copySuccess
-                                                        ? "Copied!"
-                                                        : "Copy Link"}
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        handleShare("twitter")
-                                                    }
-                                                    className="flex items-center gap-3 px-4 py-3 text-sm text-purple-200 hover:bg-purple-400/15 rounded-xl transition-all duration-300 hover:scale-105"
-                                                >
-                                                    <ExternalLink className="w-4 h-4" />
-                                                    Twitter
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        handleShare("telegram")
-                                                    }
-                                                    className="flex items-center gap-3 px-4 py-3 text-sm text-purple-200 hover:bg-purple-400/15 rounded-xl transition-all duration-300 hover:scale-105"
-                                                >
-                                                    <ExternalLink className="w-4 h-4" />
-                                                    Telegram
-                                                </button>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
                         </div>
                     </motion.div>
 
@@ -1014,6 +899,7 @@ export default memo(function RaffleOnchainParticipation({
                 contractAddress={contractAddress}
                 raffleId={raffleId}
                 raffleTitle={basicInfo?.title || "Raffle"}
+                prizesData={dataToUse || []}
             />
         </>
     );

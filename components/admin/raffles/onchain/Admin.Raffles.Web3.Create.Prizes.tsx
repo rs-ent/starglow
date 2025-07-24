@@ -16,9 +16,7 @@ import {
     FaEye,
     FaDollarSign,
     FaChartPie,
-    FaLightbulb,
     FaCopy,
-    FaDice,
     FaTrophy,
     FaGripVertical,
     FaEdit,
@@ -113,17 +111,6 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
         () => (spgResult.getSPGsData || []) as SPG[],
         [spgResult.getSPGsData]
     );
-
-    console.log("🔍 디버깅 정보:", {
-        assetsLoading: assetsResult.isAssetsLoading,
-        assetsError: assetsResult.assetsError,
-        assetsCount: assetsData?.length || 0,
-        assetsData: assetsData?.slice(0, 3),
-        spgLoading: spgResult.getSPGsIsLoading,
-        spgError: spgResult.getSPGsError,
-        spgCount: spgsData?.length || 0,
-        spgsData: spgsData?.slice(0, 3),
-    });
 
     const addPrize = useCallback(() => {
         const prizes = Array.isArray(data.prizes) ? data.prizes : [];
@@ -336,7 +323,6 @@ export function AdminRafflesWeb3CreatePrizes({ data, updateData }: Props) {
                 data.fee?.participationFeeAmount || "0"
             );
 
-            console.log("Prize Type Changed", prizeType);
 
             const updates: Record<string, any> = {
                 prizeType,

@@ -4,12 +4,9 @@ import { useCallback } from "react";
 import {
     FaCog,
     FaUsers,
-    FaUser,
     FaTrophy,
     FaWeight,
-    FaInfoCircle,
     FaCheckCircle,
-    FaExclamationTriangle,
 } from "react-icons/fa";
 import type { RaffleFormData } from "./Admin.Raffles.Web3.Create.Manager";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import {
@@ -46,42 +46,31 @@ export function AdminRafflesWeb3CreateBasicInfo({
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
-    const loadContracts = useCallback(
-        async (networkId?: string) => {
-            setIsLoadingContracts(true);
-            try {
-                const result = await getRafflesContractsV2({
-                    isActive: true,
-                });
-
-                if (result.success && result.data) {
-                    setContracts(result.data);
-                    // 스마트 기본값: 첫 번째 활성 컨트랙트 자동 선택
-                    if (result.data.length > 0 && !data.contractAddress) {
-                        updateData("contractAddress", result.data[0].address);
-                    }
-                } else {
-                    toast.error("컨트랙트 목록을 불러오는데 실패했습니다.");
-                    setContracts([]);
-                }
-            } catch (error) {
-                console.error("Error loading contracts:", error);
-                toast.error("컨트랙트 로딩 중 오류가 발생했습니다.");
-                setContracts([]);
-            } finally {
-                setIsLoadingContracts(false);
-            }
-        },
-        [data.contractAddress, updateData]
-    );
-
-    useEffect(() => {
-        if (selectedNetwork) {
-            loadContracts(selectedNetwork).catch((err) => {
-                console.error("Error loading contracts:", err);
+    const loadContracts = useCallback(async () => {
+        setIsLoadingContracts(true);
+        try {
+            const result = await getRafflesContractsV2({
+                isActive: true,
             });
+
+            if (result.success && result.data) {
+                setContracts(result.data);
+                // 스마트 기본값: 첫 번째 활성 컨트랙트 자동 선택
+                if (result.data.length > 0 && !data.contractAddress) {
+                    updateData("contractAddress", result.data[0].address);
+                }
+            } else {
+                toast.error("컨트랙트 목록을 불러오는데 실패했습니다.");
+                setContracts([]);
+            }
+        } catch (error) {
+            console.error("Error loading contracts:", error);
+            toast.error("컨트랙트 로딩 중 오류가 발생했습니다.");
+            setContracts([]);
+        } finally {
+            setIsLoadingContracts(false);
         }
-    }, [selectedNetwork, loadContracts]);
+    }, [data.contractAddress, updateData]);
 
     const handleNetworkChange = useCallback(
         (networkId: string) => {
@@ -89,6 +78,10 @@ export function AdminRafflesWeb3CreateBasicInfo({
             updateData("networkId", networkId);
             updateData("contractAddress", "");
             updateData("walletAddress", "");
+
+            loadContracts().catch((err) => {
+                console.error("Error loading contracts:", err);
+            });
 
             // 스마트 기본값: 네트워크 변경 시 호환되는 지갑 자동 선택
             const compatibleWallets = escrowWallets?.filter((w) =>
@@ -98,7 +91,7 @@ export function AdminRafflesWeb3CreateBasicInfo({
                 updateData("walletAddress", compatibleWallets[0].address);
             }
         },
-        [updateData, escrowWallets]
+        [updateData, escrowWallets, loadContracts]
     );
 
     const handleBasicInfoChange = useCallback(

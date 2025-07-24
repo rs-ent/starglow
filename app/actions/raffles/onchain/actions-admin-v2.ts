@@ -68,18 +68,8 @@ export interface DeployRafflesV2ContractResult {
 export async function deployRafflesV2Contract(
     input: DeployRafflesV2ContractInput
 ): Promise<DeployRafflesV2ContractResult> {
-    console.log("[deployRafflesV2Contract] 🚀 Starting deployment process...");
-    console.log("[deployRafflesV2Contract] Input:", {
-        networkId: input.networkId,
-        walletAddress: input.walletAddress,
-        contractName: input.contractName || "RafflesV2",
-    });
-
     try {
         // Step 1: 네트워크 조회
-        console.log(
-            "[deployRafflesV2Contract] 📡 Step 1: Looking up network..."
-        );
         const network = await prisma.blockchainNetwork.findUnique({
             where: { id: input.networkId },
         });
@@ -95,19 +85,7 @@ export async function deployRafflesV2Contract(
             };
         }
 
-        console.log("[deployRafflesV2Contract] ✅ Network found:", {
-            id: network.id,
-            name: network.name,
-            chainId: network.chainId,
-            rpcUrl: network.rpcUrl
-                ? network.rpcUrl.substring(0, 50) + "..."
-                : "undefined",
-        });
-
         // Step 2: 에스크로 지갑 조회
-        console.log(
-            "[deployRafflesV2Contract] 🔑 Step 2: Looking up escrow wallet..."
-        );
         const escrowWallet = await prisma.escrowWallet.findUnique({
             where: { address: input.walletAddress },
         });
@@ -122,30 +100,6 @@ export async function deployRafflesV2Contract(
                 error: "Escrow wallet not found",
             };
         }
-
-        console.log("[deployRafflesV2Contract] ✅ Escrow wallet found:", {
-            id: escrowWallet.id,
-            address: escrowWallet.address,
-        });
-
-        // Step 3: ABI와 Bytecode 검증
-        console.log(
-            "[deployRafflesV2Contract] 📋 Step 3: Validating contract artifacts..."
-        );
-        console.log("[deployRafflesV2Contract] ABI length:", abi.length);
-        console.log(
-            "[deployRafflesV2Contract] Bytecode length:",
-            bytecode.length
-        );
-        console.log(
-            "[deployRafflesV2Contract] Bytecode preview:",
-            bytecode.substring(0, 100) + "..."
-        );
-
-        // Step 4: 가스비 사전 추정
-        console.log(
-            "[deployRafflesV2Contract] ⛽ Step 4: Estimating gas for V2 contract deployment..."
-        );
         let gasEstimationData = undefined;
         try {
             const gasEstimation = await estimateGasComprehensive({
@@ -155,34 +109,6 @@ export async function deployRafflesV2Contract(
                 gasMultiplier: 1.2, // 배포는 복잡하므로 안전한 배수 사용
                 priorityFeeMultiplier: 1.1,
             });
-
-            console.log("[deployRafflesV2Contract] 📊 Gas Estimation Results:");
-            console.log(
-                `  • Estimated Gas: ${gasEstimation.estimatedGas.toLocaleString()}`
-            );
-            console.log(
-                `  • Gas Price: ${gasEstimation.gasPrice.toString()} wei`
-            );
-            console.log(
-                `  • Max Fee Per Gas: ${gasEstimation.maxFeePerGas.toString()} wei`
-            );
-            console.log(
-                `  • Max Priority Fee: ${gasEstimation.maxPriorityFeePerGas.toString()} wei`
-            );
-            console.log(
-                `  • Estimated Cost: ${gasEstimation.estimatedCostFormatted} ${gasEstimation.networkInfo.symbol}`
-            );
-            console.log(
-                `  • Recommendation: ${gasEstimation.recommendation.toUpperCase()}`
-            );
-            console.log(`  • Confidence: ${gasEstimation.confidence}%`);
-
-            if (gasEstimation.estimatedCostUSD) {
-                console.log(
-                    `  • Estimated Cost USD: $${gasEstimation.estimatedCostUSD}`
-                );
-            }
-
             // 반환값에 포함할 가스 추정 데이터 저장
             gasEstimationData = {
                 estimatedGas: gasEstimation.estimatedGas.toString(),
@@ -198,16 +124,6 @@ export async function deployRafflesV2Contract(
             );
         }
 
-        // Step 5: V2 컨트랙트 배포
-        console.log(
-            "[deployRafflesV2Contract] 🚀 Step 5: Deploying V2 contract..."
-        );
-        console.log("[deployRafflesV2Contract] Deployment params:", {
-            walletId: escrowWallet.id,
-            networkName: network.name,
-            args: [], // V2 constructor는 매개변수 없음
-        });
-
         const { hash, contractAddress } = await deployContract({
             walletId: escrowWallet.id,
             network,
@@ -216,19 +132,6 @@ export async function deployRafflesV2Contract(
             args: [], // V2 constructor는 매개변수 없음 (msg.sender에게 ADMIN_ROLE 자동 부여)
         });
 
-        console.log(
-            "[deployRafflesV2Contract] ✅ Contract deployed successfully!"
-        );
-        console.log("[deployRafflesV2Contract] Transaction hash:", hash);
-        console.log(
-            "[deployRafflesV2Contract] Contract address:",
-            contractAddress
-        );
-
-        // Step 6: 배포 블록 번호 조회
-        console.log(
-            "[deployRafflesV2Contract] 📦 Step 6: Waiting for transaction receipt..."
-        );
         const publicClient = await fetchPublicClient({
             network,
         });
@@ -238,21 +141,6 @@ export async function deployRafflesV2Contract(
             timeout: 120000, // 2분 타임아웃
         });
 
-        console.log("[deployRafflesV2Contract] ✅ Transaction confirmed!");
-        console.log(
-            "[deployRafflesV2Contract] Block number:",
-            receipt.blockNumber
-        );
-        console.log("[deployRafflesV2Contract] Gas used:", receipt.gasUsed);
-        console.log(
-            "[deployRafflesV2Contract] Transaction status:",
-            receipt.status
-        );
-
-        // Step 7: DB에 저장
-        console.log(
-            "[deployRafflesV2Contract] 💾 Step 7: Saving to database..."
-        );
         const deployedContract = await prisma.onchainRaffleContract.create({
             data: {
                 address: contractAddress,
@@ -263,21 +151,6 @@ export async function deployRafflesV2Contract(
                 isActive: true,
             },
         });
-
-        console.log("[deployRafflesV2Contract] ✅ Database record created:");
-        console.log(
-            "[deployRafflesV2Contract] Record ID:",
-            deployedContract.id
-        );
-
-        console.log(
-            "[deployRafflesV2Contract] 🎉 Deployment completed successfully!"
-        );
-        console.log("[deployRafflesV2Contract] Contract Features:");
-        console.log("  • O(1) Range-based Allocation");
-        console.log("  • 99.7% Gas Reduction");
-        console.log("  • AccessControl + Pausable");
-        console.log("  • Ready for 100K+ tickets");
 
         return {
             success: true,
@@ -606,7 +479,6 @@ export async function createRaffleV2(
     input: CreateRaffleV2Input
 ): Promise<CreateRaffleV2Result> {
     try {
-        console.log("input:", input);
         const contract = await prisma.onchainRaffleContract.findUnique({
             where: { address: input.contractAddress },
             select: {
@@ -714,7 +586,8 @@ export async function createRaffleV2(
                 return BigInt(defaultValue);
             } catch (error) {
                 console.warn(
-                    `BigInt conversion failed for value: ${value}, using default: ${defaultValue}`
+                    `BigInt conversion failed for value: ${value}, using default: ${defaultValue}`,
+                    error
                 );
                 return BigInt(defaultValue);
             }
@@ -1026,34 +899,18 @@ export async function allocatePrizeV2(
             network: deployedContract.network,
         });
 
-        // 할당 전 상태 확인
-        let initialAllocationState = false;
         try {
-            const [raffleData] = await (rafflesContract.read as any).getRaffle([
+            await (rafflesContract.read as any).getRaffle([
                 BigInt(input.raffleId),
             ]);
-            if (raffleData?.prizes?.[input.prizeIndex]) {
-                initialAllocationState =
-                    raffleData.prizes[input.prizeIndex].allocated;
-                console.log(
-                    `🔍 Initial allocation state for prize ${input.prizeIndex}: ${initialAllocationState}`
-                );
-            }
         } catch (error) {
             console.warn("Failed to check initial allocation state:", error);
         }
 
-        // 🚀 O(1) 범위 기반 할당으로 99.7% 가스 절약!
-        // 이전 O(n) 시스템: 2M~100M 가스 필요 (100,000 티켓 = 2억 가스)
-        // 현재 O(1) 시스템: 30K~100K 가스 필요 (모든 티켓 수에 대해 동일)
-
         // 동적 가스 추정으로 네트워크 상태에 맞춤 최적화
         let gasLimits: number[] = [];
-        let gasEstimationUsed = false;
 
         try {
-            console.log("🔍 Estimating gas for O(1) prize allocation...");
-
             // estimateGasComprehensive 함수를 사용한 포괄적 가스 추정
             const gasEstimation = await estimateGasComprehensive({
                 networkId: deployedContract.network.id,
@@ -1080,21 +937,6 @@ export async function allocatePrizeV2(
             gasLimits = safetyMultipliers.map((multiplier) =>
                 Math.floor(baseGas * multiplier)
             );
-            gasEstimationUsed = true;
-
-            console.log(
-                `✅ Gas estimation successful: ${baseGas.toLocaleString()} base gas`
-            );
-            console.log(
-                `📊 Dynamic gas limits: ${gasLimits
-                    .map((g) => g.toLocaleString())
-                    .join(", ")}`
-            );
-            console.log(
-                `💡 Using ${
-                    gasEstimationUsed ? "dynamic" : "fallback"
-                } gas estimation for O(1) allocation`
-            );
         } catch (gasEstError) {
             console.warn(
                 "⚠️ Gas estimation failed, using optimized fallback limits:",
@@ -1112,20 +954,10 @@ export async function allocatePrizeV2(
 
         let lastError: any = null;
         let attemptCount = 0;
-        let finalTxHash = "";
-        let finalReceipt: any = null;
 
         for (const gasLimit of gasLimits) {
             attemptCount++;
             try {
-                console.log(
-                    `🔄 O(1) Allocation attempt ${attemptCount}/5 - raffleId: ${
-                        input.raffleId
-                    }, prizeIndex: ${
-                        input.prizeIndex
-                    }, gasLimit: ${gasLimit.toLocaleString()}`
-                );
-
                 const allocateTx = await (
                     rafflesContract.write as any
                 ).allocatePrize(
@@ -1135,17 +967,9 @@ export async function allocatePrizeV2(
                     }
                 );
 
-                console.log(
-                    `✅ Allocation transaction submitted: ${allocateTx}`
-                );
-
                 const receipt = await publicClient.waitForTransactionReceipt({
                     hash: allocateTx as `0x${string}`,
                 });
-
-                console.log(
-                    `📦 Transaction confirmed - Block: ${receipt.blockNumber}, Status: ${receipt.status}, Gas used: ${receipt.gasUsed}`
-                );
 
                 // 트랜잭션 상태 확인 (1 = success, 0 = failure)
                 if (receipt.status !== "success") {
@@ -1192,9 +1016,6 @@ export async function allocatePrizeV2(
                         if (raffleData?.prizes?.[input.prizeIndex]) {
                             actuallyAllocated =
                                 raffleData.prizes[input.prizeIndex].allocated;
-                            console.log(
-                                `🔍 Verification attempt ${verificationAttempts}: Prize ${input.prizeIndex} allocated: ${actuallyAllocated}`
-                            );
 
                             if (actuallyAllocated) {
                                 break; // 할당 확인됨
@@ -1223,17 +1044,8 @@ export async function allocatePrizeV2(
 
                 // 성공! 이벤트 확인
                 let allPrizesAllocated = false;
-                let prizeAllocatedEventFound = false;
 
                 if (receipt.logs && receipt.logs.length > 0) {
-                    // PrizeAllocated 이벤트 확인
-                    const prizeAllocatedEvent = receipt.logs.find(
-                        (log) =>
-                            log.topics[0] ===
-                            getEventSignature("PrizeAllocated")
-                    );
-                    prizeAllocatedEventFound = !!prizeAllocatedEvent;
-
                     // RaffleReadyToActive 이벤트 확인
                     const readyToActiveEvent = receipt.logs.find(
                         (log) =>
@@ -1241,22 +1053,7 @@ export async function allocatePrizeV2(
                             getEventSignature("RaffleReadyToActive")
                     );
                     allPrizesAllocated = !!readyToActiveEvent;
-
-                    console.log(
-                        `🎁 PrizeAllocated event found: ${prizeAllocatedEventFound}`
-                    );
-                    console.log(
-                        `🏁 RaffleReadyToActive event found: ${allPrizesAllocated}`
-                    );
                 }
-
-                console.log(
-                    `✅ Prize ${
-                        input.prizeIndex
-                    } successfully allocated using O(1) range-based system! Gas used: ${gasUsed.toLocaleString()} (99.7% reduction vs O(n) system) - Attempt ${attemptCount}/${
-                        gasLimits.length
-                    }`
-                );
 
                 return {
                     success: true,
@@ -1284,9 +1081,6 @@ export async function allocatePrizeV2(
                     errorMessage.includes("intrinsic gas too low");
 
                 if (isGasError) {
-                    console.log(
-                        `🔄 Gas error detected, continuing to next gas limit...`
-                    );
                     continue;
                 }
 
@@ -1952,44 +1746,20 @@ export async function deallocatePrizeV2(
             client: walletClient,
         });
 
-        console.log(
-            `[deallocatePrizeV2] Starting deallocation for raffle ${input.raffleId}, prize ${input.prizeIndex}`
-        );
-
         const hash = await (rafflesContract.write as any).deallocatePrize([
             BigInt(input.raffleId),
             BigInt(input.prizeIndex),
         ]);
-
-        console.log(`[deallocatePrizeV2] Transaction submitted: ${hash}`);
 
         const receipt = await publicClient.waitForTransactionReceipt({
             hash,
             timeout: 30000,
         });
 
-        console.log(
-            `[deallocatePrizeV2] Transaction confirmed - Block: ${receipt.blockNumber}, Gas used: ${receipt.gasUsed}`
-        );
-
         const prizeDeallocatedSignature = getEventSignature("PrizeDeallocated");
         const prizeDeallocatedEventFound = receipt.logs.some(
             (log) => log.topics[0] === prizeDeallocatedSignature
         );
-
-        console.log(
-            `[deallocatePrizeV2] PrizeDeallocated event found: ${prizeDeallocatedEventFound}`
-        );
-
-        if (prizeDeallocatedEventFound) {
-            console.log(
-                `[deallocatePrizeV2] Prize ${input.prizeIndex} successfully deallocated for raffle ${input.raffleId}`
-            );
-        } else {
-            console.warn(
-                `[deallocatePrizeV2] Transaction succeeded but PrizeDeallocated event not found`
-            );
-        }
 
         return {
             success: true,
@@ -2068,10 +1838,6 @@ export async function getRaffleAllocationSummaryV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getRaffleAllocationSummaryV2] Getting allocation summary for raffle ${input.raffleId}`
-        );
-
         const allocationSummary = await (
             rafflesContract.read as any
         ).getRaffleAllocationSummary([BigInt(input.raffleId)]);
@@ -2098,10 +1864,6 @@ export async function getRaffleAllocationSummaryV2(
                 })
             ),
         };
-
-        console.log(
-            `[getRaffleAllocationSummaryV2] Summary retrieved: ${result.allocatedPrizes}/${result.totalPrizes} prizes allocated`
-        );
 
         return {
             success: true,
@@ -2165,10 +1927,6 @@ export async function getTicketAllocationRangeV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getTicketAllocationRangeV2] Getting allocation range for raffle ${input.raffleId}, prize ${input.prizeIndex}`
-        );
-
         const [startTicket, endTicket, allocated] = await (
             rafflesContract.read as any
         ).getTicketAllocationRange([
@@ -2183,10 +1941,6 @@ export async function getTicketAllocationRangeV2(
             endTicket: safeBigIntToNumber(endTicket),
             allocated: allocated,
         };
-
-        console.log(
-            `[getTicketAllocationRangeV2] Range retrieved: ${result.startTicket}-${result.endTicket}, allocated: ${result.allocated}`
-        );
 
         return {
             success: true,
@@ -2247,10 +2001,6 @@ export async function verifyTicketAllocationV2(
             client: publicClient,
         });
 
-        console.log(
-            `[verifyTicketAllocationV2] Verifying ticket allocation for raffle ${input.raffleId}`
-        );
-
         const [isValid, errorMessage] = await (
             rafflesContract.read as any
         ).verifyTicketAllocation([BigInt(input.raffleId)]);
@@ -2260,12 +2010,6 @@ export async function verifyTicketAllocationV2(
             isValid: isValid,
             errorMessage: errorMessage,
         };
-
-        console.log(
-            `[verifyTicketAllocationV2] Verification result: ${
-                result.isValid ? "VALID" : `INVALID (${result.errorMessage})`
-            }`
-        );
 
         return {
             success: true,
@@ -2343,10 +2087,6 @@ export async function getRaffleListCardInfoV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getRaffleListCardInfoV2] Getting card info for raffle ${input.raffleId}`
-        );
-
         const cardInfo = await (
             rafflesContract.read as any
         ).getRaffleListCardInfo([BigInt(input.raffleId)]);
@@ -2373,10 +2113,6 @@ export async function getRaffleListCardInfoV2(
             remainingTickets: safeBigIntToNumber(cardInfo.remainingTickets),
             raffleId: input.raffleId,
         };
-
-        console.log(
-            `[getRaffleListCardInfoV2] Card info retrieved for "${result.title}"`
-        );
 
         return {
             success: true,
@@ -2483,10 +2219,6 @@ export async function getRaffleV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getRaffleV2] Getting full raffle info for raffle ${input.raffleId}`
-        );
-
         const [raffleData, remainingTickets] = await (
             rafflesContract.read as any
         ).getRaffle([BigInt(input.raffleId)]);
@@ -2551,10 +2283,6 @@ export async function getRaffleV2(
             })),
             remainingTickets: safeBigIntToNumber(remainingTickets),
         };
-
-        console.log(
-            `[getRaffleV2] Full raffle info retrieved for "${result.basicInfo.title}" with ${result.prizes.length} prizes`
-        );
 
         return {
             success: true,
@@ -2631,10 +2359,6 @@ export async function getUserParticipationDetailsV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getUserParticipationDetailsV2] Getting participation details for user ${input.playerAddress} in raffle ${input.raffleId}`
-        );
-
         const participationInfo = await (
             rafflesContract.read as any
         ).getUserParticipationDetails([
@@ -2668,10 +2392,6 @@ export async function getUserParticipationDetailsV2(
                 participationInfo.unrevealedCount
             ),
         };
-
-        console.log(
-            `[getUserParticipationDetailsV2] Retrieved ${result.participationCount} participations, ${result.totalWins} wins for user ${input.playerAddress}`
-        );
 
         return {
             success: true,
@@ -2731,10 +2451,6 @@ export async function getUserParticipationCountV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getUserParticipationCountV2] Getting participation count for user ${input.playerAddress} in raffle ${input.raffleId}`
-        );
-
         const participationCount = await (
             rafflesContract.read as any
         ).getUserParticipationCount([
@@ -2745,10 +2461,6 @@ export async function getUserParticipationCountV2(
         const result = {
             participationCount: safeBigIntToNumber(participationCount),
         };
-
-        console.log(
-            `[getUserParticipationCountV2] User ${input.playerAddress} has ${result.participationCount} participations`
-        );
 
         return {
             success: true,
@@ -2808,10 +2520,6 @@ export async function getUserParticipantIdsV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getUserParticipantIdsV2] Getting participant IDs for user ${input.playerAddress} in raffle ${input.raffleId}`
-        );
-
         const participantIds = await (
             rafflesContract.read as any
         ).getUserParticipantIds([
@@ -2822,10 +2530,6 @@ export async function getUserParticipantIdsV2(
         const result = {
             participantIds: participantIds.map((id: any) => id.toString()),
         };
-
-        console.log(
-            `[getUserParticipantIdsV2] User ${input.playerAddress} has ${result.participantIds.length} participant IDs`
-        );
 
         return {
             success: true,
@@ -2889,8 +2593,6 @@ export async function getActiveRaffleIdsV2(
             client: publicClient,
         });
 
-        console.log(`[getActiveRaffleIdsV2] Getting active raffle IDs`);
-
         const activeRaffleIds = await (
             rafflesContract.read as any
         ).getActiveRaffleIds();
@@ -2899,10 +2601,6 @@ export async function getActiveRaffleIdsV2(
             activeRaffleIds: activeRaffleIds.map((id: any) => id.toString()),
             count: activeRaffleIds.length,
         };
-
-        console.log(
-            `[getActiveRaffleIdsV2] Found ${result.count} active raffles`
-        );
 
         return {
             success: true,
@@ -2964,8 +2662,6 @@ export async function getCompletedRaffleIdsV2(
             client: publicClient,
         });
 
-        console.log(`[getCompletedRaffleIdsV2] Getting completed raffle IDs`);
-
         const completedRaffleIds = await (
             rafflesContract.read as any
         ).getCompletedRaffleIds();
@@ -2976,10 +2672,6 @@ export async function getCompletedRaffleIdsV2(
             ),
             count: completedRaffleIds.length,
         };
-
-        console.log(
-            `[getCompletedRaffleIdsV2] Found ${result.count} completed raffles`
-        );
 
         return {
             success: true,
@@ -3042,10 +2734,6 @@ export async function getRaffleParticipantsV2(
             client: publicClient,
         });
 
-        console.log(
-            `[getRaffleParticipantsV2] Getting participants for raffle ${input.raffleId}`
-        );
-
         const participants = await (
             rafflesContract.read as any
         ).getRaffleParticipants([BigInt(input.raffleId)]);
@@ -3054,10 +2742,6 @@ export async function getRaffleParticipantsV2(
             participants: participants,
             count: participants.length,
         };
-
-        console.log(
-            `[getRaffleParticipantsV2] Found ${result.count} unique participants in raffle ${input.raffleId}`
-        );
 
         return {
             success: true,
@@ -3119,10 +2803,6 @@ export async function isRaffleActiveV2(
             client: publicClient,
         });
 
-        console.log(
-            `[isRaffleActiveV2] Checking if raffle ${input.raffleId} is active`
-        );
-
         const isActive = await (rafflesContract.read as any).isRaffleActive([
             BigInt(input.raffleId),
         ]);
@@ -3130,12 +2810,6 @@ export async function isRaffleActiveV2(
         const result = {
             isActive: isActive,
         };
-
-        console.log(
-            `[isRaffleActiveV2] Raffle ${input.raffleId} is ${
-                result.isActive ? "active" : "inactive"
-            }`
-        );
 
         return {
             success: true,
@@ -3198,10 +2872,6 @@ export async function hasParticipatedV2(
             client: publicClient,
         });
 
-        console.log(
-            `[hasParticipatedV2] Checking if user ${input.playerAddress} participated in raffle ${input.raffleId}`
-        );
-
         const hasParticipated = await (
             rafflesContract.read as any
         ).hasParticipated([
@@ -3212,12 +2882,6 @@ export async function hasParticipatedV2(
         const result = {
             hasParticipated: hasParticipated,
         };
-
-        console.log(
-            `[hasParticipatedV2] User ${input.playerAddress} ${
-                result.hasParticipated ? "has" : "has not"
-            } participated in raffle ${input.raffleId}`
-        );
 
         return {
             success: true,
@@ -3278,8 +2942,6 @@ export async function getActiveRaffleCountV2(
             client: publicClient,
         });
 
-        console.log(`[getActiveRaffleCountV2] Getting active raffle count`);
-
         const activeRaffleCount = await (
             rafflesContract.read as any
         ).getActiveRaffleCount();
@@ -3287,10 +2949,6 @@ export async function getActiveRaffleCountV2(
         const result = {
             activeRaffleCount: safeBigIntToNumber(activeRaffleCount),
         };
-
-        console.log(
-            `[getActiveRaffleCountV2] Found ${result.activeRaffleCount} active raffles`
-        );
 
         return {
             success: true,

@@ -102,14 +102,7 @@ export default memo(function RaffleOnchainPrizesTierItem({
             isNFT: data.prizeType === 1,
             isAsset: data.prizeType === 0,
         };
-    }, [
-        data?.order,
-        data?.rarity,
-        data?.prizeQuantity,
-        data?.quantity,
-        data?.prizeType,
-        totalPrizes,
-    ]);
+    }, [data, totalPrizes]);
 
     if (!data || !prizeInfo) {
         return <PrizeItemEmpty index={index} />;

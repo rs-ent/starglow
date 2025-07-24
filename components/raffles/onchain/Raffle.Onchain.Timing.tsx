@@ -93,7 +93,7 @@ export default memo(function RaffleOnchainTiming({
             drawDate: drawDate ? new Date(Number(drawDate) * 1000) : null,
             instantDraw: data.instantDraw,
         };
-    }, [data?.instantDraw, data?.startDate, data?.endDate, data?.drawDate]);
+    }, [data]);
 
     const updateTimer = useCallback(() => {
         if (!timingInfo?.endDate || !timingInfo?.startDate) return;
@@ -129,11 +129,7 @@ export default memo(function RaffleOnchainTiming({
         } else {
             setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         }
-    }, [
-        timingInfo?.endDate?.getTime(),
-        timingInfo?.startDate?.getTime(),
-        timingInfo?.status,
-    ]);
+    }, [timingInfo?.endDate, timingInfo?.startDate, timingInfo?.status]);
 
     useEffect(() => {
         const endTime = timingInfo?.endDate?.getTime();
@@ -145,7 +141,7 @@ export default memo(function RaffleOnchainTiming({
         const interval = setInterval(updateTimer, 1000);
 
         return () => clearInterval(interval);
-    }, [updateTimer]);
+    }, [updateTimer, timingInfo?.endDate, timingInfo?.startDate]);
 
     if (!data || !timingInfo) {
         return (

@@ -6,11 +6,7 @@ import { FaArrowLeft, FaArrowRight, FaCheck } from "react-icons/fa";
 
 import { useStoryNetwork } from "@/app/story/network/hooks";
 import { useEscrowWallets } from "@/app/story/escrowWallet/hooks";
-import {
-    createRaffleV2,
-    allocatePrizeV2,
-    activateRaffleV2,
-} from "@/app/actions/raffles/onchain/actions-admin-v2";
+import { createRaffleV2 } from "@/app/actions/raffles/onchain/actions-admin-v2";
 
 import { AdminRafflesWeb3CreateBasicInfo } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.BasicInfo";
 import { AdminRafflesWeb3CreateTiming } from "@/components/admin/raffles/onchain/Admin.Raffles.Web3.Create.Timing";

@@ -8,8 +8,6 @@ import {
     FaInfoCircle,
     FaRocket,
     FaGlobe,
-    FaNetworkWired,
-    FaWallet,
     FaClock,
     FaCog,
     FaCoins,
@@ -39,14 +37,6 @@ interface ValidationResult {
     errors: string[];
     warnings: string[];
 }
-
-const STEP_NAMES = [
-    "기본 정보",
-    "일정 설정",
-    "래플 설정",
-    "참가비",
-    "상품 설정",
-];
 
 const V2_CREATION_STEPS = [
     {

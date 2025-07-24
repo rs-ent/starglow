@@ -447,8 +447,6 @@ export function usePauseContractV2Mutation() {
 
 // 🚀 V2 컨트랙트 배포 뮤테이션
 export function useDeployRafflesV2ContractMutation() {
-    const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: async (
             params: Parameters<typeof deployRafflesV2Contract>[0]
@@ -461,10 +459,6 @@ export function useDeployRafflesV2ContractMutation() {
                 throw new Error(errorMessage);
             }
             return result.data;
-        },
-        onSuccess: (data, variables) => {
-            // 새로 배포된 컨트랙트의 메타데이터 쿼리들을 프리페치할 수 있음
-            console.log("✅ RafflesV2 contract deployed successfully:", data);
         },
         onError: (error) => {
             console.error("❌ DeployRafflesV2Contract error:", error);
@@ -479,18 +473,33 @@ export function useDistributePrizeV2Mutation() {
         mutationFn: distributePrize,
         onSuccess: (_data, variables) => {
             if (variables.prizeData.prizeType === 1) {
-                queryClient.invalidateQueries({
-                    queryKey: playerAssetsKeys.balance(
-                        variables.playerId,
-                        variables.prizeData.assetId || ""
-                    ),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.balance(
+                            variables.playerId,
+                            variables.prizeData.assetId || ""
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "❌ DistributePrizeV2 mutation error:",
+                            error
+                        );
+                    });
 
-                queryClient.invalidateQueries({
-                    queryKey: playerAssetsKeys.balances(variables.playerId, [
-                        variables.prizeData.assetId || "",
-                    ]),
-                });
+                queryClient
+                    .invalidateQueries({
+                        queryKey: playerAssetsKeys.balances(
+                            variables.playerId,
+                            [variables.prizeData.assetId || ""]
+                        ),
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "❌ DistributePrizeV2 mutation error:",
+                            error
+                        );
+                    });
             }
         },
         onError: (error) => {

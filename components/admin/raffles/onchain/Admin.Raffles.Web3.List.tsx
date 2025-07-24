@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
     FaList,
     FaPlay,
@@ -319,7 +319,9 @@ export default function AdminRafflesWeb3List() {
 
     const handleAllocationComplete = useCallback(() => {
         setSelectedRaffleForAllocation(null);
-        loadRaffles();
+        loadRaffles().catch((error) => {
+            console.error("Error loading raffles:", error);
+        });
         toast.success("Allocation이 완료되었습니다!");
     }, [loadRaffles, toast]);
 
