@@ -2,9 +2,9 @@
 
 "use client";
 
-import { memo, useState, useMemo } from "react";
+import { memo, useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Gift, Users, Clock, Target, Zap, Database } from "lucide-react";
+import { Gift, Users, Clock, Target } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -51,6 +51,10 @@ export default memo(function RafflesList() {
                 isActive: "ACTIVE",
             },
         });
+
+    useEffect(() => {
+        setSelectedTab("onchain");
+    }, []);
 
     const filteredRaffles = useMemo(() => {
         if (!rafflesData?.success || !rafflesData.data) return [];
@@ -224,7 +228,7 @@ export default memo(function RafflesList() {
                 <motion.h2
                     className={cn(
                         "text-center text-4xl font-bold",
-                        "mt-[70px] md:mt-[80px] lg:mt-[20px]",
+                        "mt-[70px] md:mt-[80px] lg:mt-[20px] mb-[40px]",
                         getResponsiveClass(45).textClass
                     )}
                     animate={{
@@ -235,48 +239,6 @@ export default memo(function RafflesList() {
                 >
                     Raffles
                 </motion.h2>
-
-                {/* Tab Selector */}
-                <div className="flex justify-center mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]">
-                    <div className="relative flex bg-black/20 backdrop-blur-md rounded-2xl p-1 border border-white/10">
-                        <motion.div
-                            className="absolute inset-y-1 bg-gradient-to-r from-purple-500/80 to-violet-500/80 rounded-xl"
-                            initial={false}
-                            animate={{
-                                x: selectedTab === "onchain" ? 0 : "95%",
-                                width:
-                                    selectedTab === "onchain" ? "50%" : "50%",
-                            }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 30,
-                            }}
-                        />
-
-                        {[
-                            {
-                                key: "onchain",
-                                label: "Onchain",
-                                icon: Zap,
-                                count: filteredRaffles.length,
-                            },
-                            {
-                                key: "offchain",
-                                label: "Offchain",
-                                icon: Database,
-                                count: allRaffles?.data?.length || 0,
-                            },
-                        ].map((tab) => (
-                            <TabButton
-                                key={tab.key}
-                                tab={tab}
-                                isSelected={selectedTab === tab.key}
-                                onClick={() => setSelectedTab(tab.key as any)}
-                            />
-                        ))}
-                    </div>
-                </div>
 
                 {/* Raffles Grid */}
                 <AnimatePresence mode="wait">
@@ -348,86 +310,6 @@ export default memo(function RafflesList() {
                 </AnimatePresence>
             </div>
         </div>
-    );
-});
-
-// Tab Button Component
-interface TabButtonProps {
-    tab: {
-        key: string;
-        label: string;
-        icon: any;
-        count: number;
-    };
-    isSelected: boolean;
-    onClick: () => void;
-}
-
-const TabButton = memo(function TabButton({
-    tab,
-    isSelected,
-    onClick,
-}: TabButtonProps) {
-    const Icon = tab.icon;
-
-    return (
-        <motion.button
-            className={cn(
-                "relative z-10 flex items-center gap-2 px-6 py-3 rounded-xl transition-all duration-300",
-                "font-medium text-sm whitespace-nowrap",
-                isSelected
-                    ? "text-white shadow-lg"
-                    : "text-white/60 hover:text-white/80"
-            )}
-            onClick={onClick}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            animate={{
-                backgroundColor: isSelected
-                    ? tab.key === "onchain"
-                        ? "rgba(147, 51, 234, 0.3)"
-                        : "rgba(99, 102, 241, 0.3)"
-                    : "transparent",
-            }}
-            transition={{ duration: 0.3 }}
-        >
-            <motion.div
-                animate={{
-                    scale: isSelected ? 1.1 : 1,
-                    rotate:
-                        isSelected && tab.key === "onchain" ? [0, 5, -5, 0] : 0,
-                }}
-                transition={{
-                    scale: { duration: 0.3 },
-                    rotate: {
-                        duration: 1.5,
-                        repeat: isSelected ? Infinity : 0,
-                        repeatDelay: 3,
-                    },
-                }}
-            >
-                <Icon className="w-4 h-4" />
-            </motion.div>
-            <span>{tab.label}</span>
-            <motion.span
-                className={cn(
-                    "flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold",
-                    isSelected
-                        ? "bg-white/30 text-white border border-white/20"
-                        : "bg-white/10 text-white/60"
-                )}
-                initial={false}
-                animate={{
-                    scale: isSelected ? 1.1 : 0.9,
-                    boxShadow: isSelected
-                        ? "0 0 10px rgba(255,255,255,0.3)"
-                        : "none",
-                }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            >
-                {tab.count}
-            </motion.span>
-        </motion.button>
     );
 });
 
@@ -857,3 +739,46 @@ const RafflesError = memo(function RafflesError() {
         </div>
     );
 });
+
+/*
+                <div className="flex justify-center mt-[30px] mb-[30px] lg:mt-[40px] lg:mb-[40px]">
+                    <div className="relative flex bg-black/20 backdrop-blur-md rounded-2xl p-1 border border-white/10">
+                        <motion.div
+                            className="absolute inset-y-1 bg-gradient-to-r from-purple-500/80 to-violet-500/80 rounded-xl"
+                            initial={false}
+                            animate={{
+                                x: selectedTab === "onchain" ? 0 : "95%",
+                                width:
+                                    selectedTab === "onchain" ? "50%" : "50%",
+                            }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 30,
+                            }}
+                        />
+
+                        {[
+                            {
+                                key: "onchain",
+                                label: "Onchain",
+                                icon: Zap,
+                                count: allRaffles?.data?.length || 0,
+                            },
+                            {
+                                key: "offchain",
+                                label: "Offchain",
+                                icon: Database,
+                                count: filteredRaffles.length,
+                            },
+                        ].map((tab) => (
+                            <TabButton
+                                key={tab.key}
+                                tab={tab}
+                                isSelected={selectedTab === tab.key}
+                                onClick={() => setSelectedTab(tab.key as any)}
+                            />
+                        ))}
+                    </div>
+                </div>
+                */
