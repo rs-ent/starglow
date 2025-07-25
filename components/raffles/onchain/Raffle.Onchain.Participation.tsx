@@ -269,7 +269,7 @@ export default memo(function RaffleOnchainParticipation({
                 playerId: session.player.id,
                 instantDraw: Boolean(timingData?.instantDraw),
                 estimateGas: false,
-                gasSpeedMultiplier: 40,
+                gasSpeedMultiplier: 5,
                 entryFeeAssetId: feeData?.participationFeeAssetId || "",
                 entryFeeAmount: Number(feeData?.participationFeeAmount) || 0,
             });

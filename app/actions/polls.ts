@@ -1275,7 +1275,7 @@ export async function participatePoll(
                     bettingAssetId: poll.bettingAssetId || undefined,
                     bettingAmount: amount,
                     estimateGas: false,
-                    gasSpeedMultiplier: 20,
+                    gasSpeedMultiplier: 2,
                 });
 
                 if (!onchainResult.success) {
