@@ -14,7 +14,7 @@ import { createRewardNotification } from "../notification/actions";
 // 실시간 데이터 (자주 변함) - 짧은 캐시
 export async function getWalletsCount() {
     return await prisma.wallet.count({
-        cacheStrategy: getCacheStrategy("oneHour"),
+        cacheStrategy: getCacheStrategy("fiveMinutes"),
         where: {
             status: "ACTIVE",
         },

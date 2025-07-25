@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-viem";
 import "@openzeppelin/hardhat-upgrades";
+import "@nomicfoundation/hardhat-verify";
 import "dotenv/config";
 
 const config: HardhatUserConfig = {
@@ -9,7 +10,7 @@ const config: HardhatUserConfig = {
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 500, // 500 → 200으로 변경 (바이트코드 크기 감소)
+                runs: 500,
                 details: {
                     yul: true,
                     yulDetails: {
@@ -20,6 +21,21 @@ const config: HardhatUserConfig = {
             },
             viaIR: true,
         },
+    },
+    etherscan: {
+        apiKey: {
+            berachain: "berachain", // apiKey is not required, just set a placeholder
+        },
+        customChains: [
+            {
+                network: "berachain",
+                chainId: 80094,
+                urls: {
+                    apiURL: "https://api.routescan.io/v2/network/mainnet/evm/80094/etherscan",
+                    browserURL: "https://beratrail.io",
+                },
+            },
+        ],
     },
     networks: {
         sepolia: {
@@ -53,6 +69,16 @@ const config: HardhatUserConfig = {
                 ? [process.env.ESCROW_PRIVATE_KEY]
                 : [],
             chainId: 80069,
+            timeout: 300000,
+            gas: 6000000,
+            gasPrice: 10000000000, // 10 gwei
+        },
+        berachain: {
+            url: "https://rpc.berachain.com",
+            accounts: process.env.ESCROW_PRIVATE_KEY
+                ? [process.env.ESCROW_PRIVATE_KEY]
+                : [],
+            chainId: 80094,
             timeout: 300000,
             gas: 6000000,
             gasPrice: 10000000000, // 10 gwei
