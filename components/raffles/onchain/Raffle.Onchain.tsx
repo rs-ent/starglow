@@ -208,7 +208,7 @@ export default memo(function RaffleOnchain({
         getFullRaffleInfoInput: {
             contractAddress,
             raffleId,
-        },
+        }
     });
 
     const { raffleDataMemo, transformedStatusDataMemo } = useMemo(() => {

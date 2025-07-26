@@ -1,103 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { HybridProgress } from "./DataFetcher";
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+} from "recharts";
+import type { DailyActivityQuests } from "@prisma/client";
 
 interface QuestPerformanceProps {
-    questPerformanceData:
-        | {
-              date: string;
-              completions: number;
-              claims: number;
-          }[]
-        | null;
-    questPerformanceProgress?: {
-        batchCount: number;
-        totalProcessed: number;
-    } | null;
-    // 🚀 하이브리드 방식 props 추가
-    questPerformanceHybridData?:
-        | {
-              date: string;
-              completions: number;
-              claims: number;
-          }[]
-        | null;
-    hybridProgress?: HybridProgress | null;
-    cancelHybridProcessing?: () => void;
-    mode?: "legacy" | "hybrid";
+    dailyQuestsData: DailyActivityQuests[];
     isLoading?: boolean;
     error?: string | null;
     onRefresh?: () => void;
-    onRefreshHybrid?: () => void;
     lastUpdated?: Date | null;
 }
 
+interface QuestPopularityItem {
+    questId: string;
+    questTitle: string;
+    completed: number;
+    claimed: number;
+}
+
 export default function QuestPerformance({
-    questPerformanceData,
-    questPerformanceProgress,
-    questPerformanceHybridData,
-    hybridProgress,
-    cancelHybridProcessing,
-    mode = "legacy",
+    dailyQuestsData,
     isLoading = false,
     error = null,
     onRefresh,
-    onRefreshHybrid,
     lastUpdated,
 }: QuestPerformanceProps) {
-    // 실시간 업데이트를 위한 애니메이션 상태
-    const [animatedCompletions, setAnimatedCompletions] = useState(0);
-    const [animatedClaims, setAnimatedClaims] = useState(0);
-    const [isAnimating, setIsAnimating] = useState(false);
+    const lastDayData =
+        dailyQuestsData && dailyQuestsData.length > 0
+            ? dailyQuestsData[dailyQuestsData.length - 1]
+            : null;
 
-    // 현재 모드에 따라 데이터 선택
-    const currentData =
-        mode === "hybrid" ? questPerformanceHybridData : questPerformanceData;
+    const lastDayCompleted = lastDayData?.completed || 0;
+    const lastDayClaimed = lastDayData?.claimed || 0;
 
-    // Calculate summary statistics
-    const totalCompletions =
-        currentData?.reduce((sum, day) => sum + day.completions, 0) || 0;
-    const totalClaims =
-        currentData?.reduce((sum, day) => sum + day.claims, 0) || 0;
-    const totalDays = currentData?.length || 0;
+    // Calculate totals across all dates
+    const totalCompleted =
+        dailyQuestsData?.reduce(
+            (sum, item) => sum + (item.completed || 0),
+            0
+        ) || 0;
+    const totalClaimed =
+        dailyQuestsData?.reduce((sum, item) => sum + (item.claimed || 0), 0) ||
+        0;
 
-    // 데이터가 변경될 때 애니메이션 효과
-    useEffect(() => {
-        if (totalCompletions > 0 || totalClaims > 0) {
-            setIsAnimating(true);
+    // Get popular quests from the latest day
+    const latestQuestPopularity = lastDayData?.questPopularity
+        ? (lastDayData.questPopularity as unknown as QuestPopularityItem[])
+        : [];
 
-            // 애니메이션 시작
-            const duration = 1000; // 1초
-            const steps = 50;
-            const interval = duration / steps;
+    const topQuests = latestQuestPopularity
+        .sort((a, b) => b.completed - a.completed)
+        .slice(0, 5);
 
-            let currentStep = 0;
-            const timer = setInterval(() => {
-                currentStep++;
-                const progress = currentStep / steps;
-
-                setAnimatedCompletions(Math.floor(totalCompletions * progress));
-                setAnimatedClaims(Math.floor(totalClaims * progress));
-
-                if (currentStep >= steps) {
-                    setAnimatedCompletions(totalCompletions);
-                    setAnimatedClaims(totalClaims);
-                    setIsAnimating(false);
-                    clearInterval(timer);
-                }
-            }, interval);
-
-            return () => clearInterval(timer);
-        }
-    }, [totalCompletions, totalClaims]);
-
-    // 🚀 시간 포맷팅 함수
-    const formatTime = (seconds: number) => {
-        if (seconds < 60) return `${Math.round(seconds)}s`;
-        if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-        return `${Math.round(seconds / 3600)}h`;
-    };
+    const chartData =
+        dailyQuestsData?.map((item: DailyActivityQuests) => ({
+            date: item.date,
+            completed: item.completed || 0,
+            claimed: item.claimed || 0,
+        })) || [];
 
     if (error) {
         return (
@@ -122,11 +90,9 @@ export default function QuestPerformance({
                         Data Error
                     </h2>
                     <p className="text-red-300 text-sm mb-4">{error}</p>
-                    {(onRefresh || onRefreshHybrid) && (
+                    {onRefresh && (
                         <button
-                            onClick={
-                                mode === "hybrid" ? onRefreshHybrid : onRefresh
-                            }
+                            onClick={onRefresh}
                             className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white text-sm font-medium transition-colors duration-200"
                         >
                             Retry
@@ -138,32 +104,16 @@ export default function QuestPerformance({
     }
 
     return (
-        <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm max-w-lg mx-auto shadow-2xl">
+        <div className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 rounded-2xl p-8 border border-slate-700/50 backdrop-blur-sm w-full mx-auto shadow-2xl">
             <div className="text-center">
-                {/* Header with mode toggle and refresh button */}
                 <div className="flex items-center justify-between mb-6 gap-4">
-                    <div className="flex-1">
-                        {/* 🚀 모드 표시 */}
-                        <div className="flex items-center gap-2">
-                            <div
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                    mode === "hybrid"
-                                        ? "bg-green-600/20 text-green-300 border border-green-600/30"
-                                        : "bg-blue-600/20 text-blue-300 border border-blue-600/30"
-                                }`}
-                            >
-                                {mode === "hybrid" ? "HYBRID" : "LEGACY"}
-                            </div>
-                        </div>
-                    </div>
+                    <div className="flex-1" />
                     <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wide">
                         QUEST PERFORMANCE
                     </h2>
                     <div className="flex-1 flex justify-end">
                         <button
-                            onClick={
-                                mode === "hybrid" ? onRefreshHybrid : onRefresh
-                            }
+                            onClick={onRefresh}
                             disabled={isLoading}
                             className="group relative p-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Refresh Data"
@@ -189,230 +139,233 @@ export default function QuestPerformance({
                     </div>
                 </div>
 
-                {/* 🚀 하이브리드 방식 진행률 표시 */}
-                {isLoading && mode === "hybrid" && hybridProgress && (
-                    <div className="mb-6">
-                        <div className="flex items-center justify-center mb-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400"></div>
-                        </div>
+                <div className="mb-6">
+                    <div className="text-4xl font-bold text-white mb-2">
+                        {totalCompleted?.toLocaleString() || "0"}
+                    </div>
+                    <div className="text-sm text-slate-400">
+                        Total Quests Completed
+                    </div>
+                </div>
 
-                        {/* 정확한 진행률 */}
-                        <div className="text-slate-300 text-sm mb-2">
-                            Processing page {hybridProgress.currentPage} of{" "}
-                            {hybridProgress.totalPages}
+                <div className="mb-4">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="text-center">
+                            <div className="text-lg font-semibold text-purple-400">
+                                <span>{totalCompleted.toLocaleString()}</span>
+                            </div>
+                            <div className="text-xs text-purple-300">
+                                Total Completed
+                            </div>
                         </div>
+                        <div className="text-center">
+                            <div className="text-lg font-semibold text-yellow-400">
+                                <span>{totalClaimed.toLocaleString()}</span>
+                                <span className="text-xs font-light text-yellow-500">
+                                    {" ("}
+                                    {totalCompleted > 0
+                                        ? (
+                                              (totalClaimed / totalCompleted) *
+                                              100
+                                          ).toFixed(1)
+                                        : "0"}
+                                    %)
+                                </span>
+                            </div>
+                            <div className="text-xs text-yellow-300">
+                                Total Claimed
+                            </div>
+                        </div>
+                    </div>
 
-                        {/* 세부 통계 */}
-                        <div className="text-slate-400 text-xs mb-3 space-y-1">
-                            <div>
-                                {hybridProgress.processedRecords.toLocaleString()}{" "}
-                                / {hybridProgress.totalRecords.toLocaleString()}{" "}
-                                records
-                            </div>
-                            <div>
-                                {hybridProgress.speed.toFixed(0)} records/sec
-                            </div>
-                            {hybridProgress.estimatedTimeRemaining > 0 && (
-                                <div>
-                                    ETA:{" "}
-                                    {formatTime(
-                                        hybridProgress.estimatedTimeRemaining
-                                    )}
+                    {lastDayData && (
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700/30">
+                            <div className="text-center">
+                                <div className="text-sm font-semibold text-purple-300">
+                                    <span>
+                                        {lastDayCompleted.toLocaleString()}
+                                    </span>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* 정확한 진행 바 */}
-                        <div className="w-full bg-slate-700 rounded-full h-2 mb-4">
-                            <div
-                                className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                                style={{
-                                    width: `${hybridProgress.percentage}%`,
-                                }}
-                            ></div>
-                        </div>
-
-                        {/* 중단 버튼 */}
-                        {hybridProgress.canCancel && cancelHybridProcessing && (
-                            <button
-                                onClick={cancelHybridProcessing}
-                                className="px-4 py-2 bg-red-600/80 hover:bg-red-600 rounded-lg text-white text-sm font-medium transition-colors duration-200"
-                            >
-                                Cancel Processing
-                            </button>
-                        )}
-                    </div>
-                )}
-
-                {/* 🎯 레거시 방식 진행률 표시 */}
-                {isLoading && mode === "legacy" && questPerformanceProgress && (
-                    <div className="mb-6">
-                        <div className="flex items-center justify-center mb-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-                        </div>
-                        <div className="text-slate-300 text-sm mb-2">
-                            Processing batch{" "}
-                            {questPerformanceProgress.batchCount}...
-                        </div>
-                        <div className="text-slate-400 text-xs mb-3">
-                            {questPerformanceProgress.totalProcessed.toLocaleString()}{" "}
-                            records processed
-                        </div>
-                        <div className="w-full bg-slate-700 rounded-full h-2">
-                            <div
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300 animate-pulse"
-                                style={{ width: "60%" }}
-                            ></div>
-                        </div>
-                    </div>
-                )}
-
-                {/* 기본 로딩 (진행률 정보가 없을 때) */}
-                {isLoading && !questPerformanceProgress && !hybridProgress && (
-                    <div className="mb-6">
-                        <div className="flex items-center justify-center mb-4">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
-                        </div>
-                        <div className="text-slate-300 text-sm mb-2">
-                            Starting quest analysis...
-                        </div>
-                    </div>
-                )}
-
-                {/* Metrics grid with animation */}
-                {!isLoading && (
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/40 rounded-xl p-4 border border-blue-700/30">
-                            <div
-                                className={`text-2xl font-bold text-blue-200 mb-1 transition-all duration-300 ${
-                                    isAnimating ? "scale-110" : "scale-100"
-                                }`}
-                            >
-                                {animatedCompletions.toLocaleString()}
+                                <div className="text-xs text-purple-200">
+                                    Today Completed
+                                </div>
                             </div>
-                            <div className="text-blue-300 text-xs uppercase tracking-wide">
-                                Total Completions
+                            <div className="text-center">
+                                <div className="text-sm font-semibold text-yellow-300">
+                                    <span>
+                                        {lastDayClaimed.toLocaleString()}
+                                    </span>
+                                    <span className="text-xs font-light text-yellow-400">
+                                        {" ("}
+                                        {lastDayCompleted > 0
+                                            ? (
+                                                  (lastDayClaimed /
+                                                      lastDayCompleted) *
+                                                  100
+                                              ).toFixed(1)
+                                            : "0"}
+                                        %)
+                                    </span>
+                                </div>
+                                <div className="text-xs text-yellow-200">
+                                    Today Claimed
+                                </div>
                             </div>
-                            {isAnimating && (
-                                <div className="w-full bg-blue-800/30 rounded-full h-1 mt-2">
-                                    <div
-                                        className="bg-blue-400 h-1 rounded-full animate-pulse"
-                                        style={{
-                                            width: `${
-                                                (animatedCompletions /
-                                                    totalCompletions) *
-                                                100
-                                            }%`,
+                        </div>
+                    )}
+                </div>
+
+                {/* Chart section */}
+                {chartData && chartData.length > 0 && (
+                    <div className="mb-6">
+                        <div className="h-60">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart
+                                    data={chartData}
+                                    margin={{
+                                        top: 5,
+                                        right: 5,
+                                        left: 5,
+                                        bottom: 5,
+                                    }}
+                                >
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        stroke="#374151"
+                                        opacity={0.3}
+                                    />
+                                    <XAxis
+                                        dataKey="date"
+                                        tick={{ fontSize: 10, fill: "#9CA3AF" }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tickFormatter={(value) => {
+                                            const date = new Date(value);
+                                            return `${
+                                                date.getMonth() + 1
+                                            }/${date.getDate()}`;
                                         }}
-                                    ></div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="bg-gradient-to-br from-green-900/40 to-green-800/40 rounded-xl p-4 border border-green-700/30">
-                            <div
-                                className={`text-2xl font-bold text-green-200 mb-1 transition-all duration-300 ${
-                                    isAnimating ? "scale-110" : "scale-100"
-                                }`}
-                            >
-                                {animatedClaims.toLocaleString()}
-                            </div>
-                            <div className="text-green-300 text-xs uppercase tracking-wide">
-                                Total Claims
-                            </div>
-                            {isAnimating && (
-                                <div className="w-full bg-green-800/30 rounded-full h-1 mt-2">
-                                    <div
-                                        className="bg-green-400 h-1 rounded-full animate-pulse"
-                                        style={{
-                                            width: `${
-                                                (animatedClaims / totalClaims) *
-                                                100
-                                            }%`,
+                                    />
+                                    <YAxis
+                                        tick={{ fontSize: 10, fill: "#9CA3AF" }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{
+                                            backgroundColor: "#1F2937",
+                                            border: "1px solid #374151",
+                                            borderRadius: "8px",
+                                            fontSize: "12px",
                                         }}
-                                    ></div>
+                                        labelStyle={{ color: "#F3F4F6" }}
+                                        labelFormatter={(label) => {
+                                            const date = new Date(label);
+                                            return date.toLocaleDateString();
+                                        }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="completed"
+                                        stroke="#A855F7"
+                                        strokeWidth={2}
+                                        dot={{
+                                            fill: "#A855F7",
+                                            strokeWidth: 0,
+                                            r: 2,
+                                        }}
+                                        activeDot={{
+                                            r: 4,
+                                            stroke: "#A855F7",
+                                            strokeWidth: 2,
+                                        }}
+                                        name="Completed"
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="claimed"
+                                        stroke="#F59E0B"
+                                        strokeWidth={2}
+                                        dot={{
+                                            fill: "#F59E0B",
+                                            strokeWidth: 0,
+                                            r: 2,
+                                        }}
+                                        activeDot={{
+                                            r: 4,
+                                            stroke: "#F59E0B",
+                                            strokeWidth: 2,
+                                        }}
+                                        name="Claimed"
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        {/* Chart legend */}
+                        <div className="flex justify-center mt-2 space-x-4 text-xs">
+                            <div className="flex items-center">
+                                <div className="w-3 h-0.5 bg-purple-400 mr-1"></div>
+                                <span className="text-slate-300">
+                                    Completed
+                                </span>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-0.5 bg-yellow-400 mr-1"></div>
+                                <span className="text-slate-300">Claimed</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Top Quests section */}
+                {topQuests.length > 0 && (
+                    <div className="mb-6">
+                        <h3 className="text-sm font-medium text-slate-400 mb-3 text-left">
+                            {`Today's Most Popular Quests`}
+                        </h3>
+                        <div className="space-y-2">
+                            {topQuests.map((quest, index) => (
+                                <div
+                                    key={quest.questId}
+                                    className="flex items-center justify-between bg-slate-700/30 rounded-lg p-3"
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className="text-xs font-bold text-slate-400 w-4">
+                                            #{index + 1}
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-sm font-medium text-white truncate max-w-48">
+                                                {quest.questTitle}
+                                            </div>
+                                            <div className="text-xs text-slate-400">
+                                                <span className="text-purple-400">
+                                                    {quest.completed} completed
+                                                </span>
+                                                <span className="mx-1">•</span>
+                                                <span className="text-yellow-400">
+                                                    {quest.claimed} claimed
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-sm font-semibold text-white">
+                                            {quest.completed > 0
+                                                ? (
+                                                      (quest.claimed /
+                                                          quest.completed) *
+                                                      100
+                                                  ).toFixed(1)
+                                                : "0"}
+                                            %
+                                        </div>
+                                        <div className="text-xs text-slate-400">
+                                            claim rate
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* 🎯 실시간 데이터 표시 (로딩 중에도) */}
-                {isLoading && currentData && currentData.length > 0 && (
-                    <div className="grid grid-cols-2 gap-4 mb-6 opacity-75">
-                        <div
-                            className={`rounded-xl p-4 border ${
-                                mode === "hybrid"
-                                    ? "bg-gradient-to-br from-green-900/20 to-green-800/20 border-green-700/20"
-                                    : "bg-gradient-to-br from-blue-900/20 to-blue-800/20 border-blue-700/20"
-                            }`}
-                        >
-                            <div
-                                className={`text-xl font-bold mb-1 ${
-                                    mode === "hybrid"
-                                        ? "text-green-300"
-                                        : "text-blue-300"
-                                }`}
-                            >
-                                {totalCompletions.toLocaleString()}
-                            </div>
-                            <div
-                                className={`text-xs uppercase tracking-wide ${
-                                    mode === "hybrid"
-                                        ? "text-green-400"
-                                        : "text-blue-400"
-                                }`}
-                            >
-                                Completions (Live)
-                            </div>
-                        </div>
-                        <div
-                            className={`rounded-xl p-4 border ${
-                                mode === "hybrid"
-                                    ? "bg-gradient-to-br from-green-900/20 to-green-800/20 border-green-700/20"
-                                    : "bg-gradient-to-br from-green-900/20 to-green-800/20 border-green-700/20"
-                            }`}
-                        >
-                            <div className="text-xl font-bold text-green-300 mb-1">
-                                {totalClaims.toLocaleString()}
-                            </div>
-                            <div className="text-green-400 text-xs uppercase tracking-wide">
-                                Claims (Live)
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Summary stats */}
-                {!isLoading && totalDays > 0 && (
-                    <div className="mb-4">
-                        <div className="text-slate-300 text-sm">
-                            Over {totalDays} days
-                        </div>
-                        <div className="text-slate-400 text-xs mt-1">
-                            Avg:{" "}
-                            {Math.round((totalCompletions / totalDays) * 10) /
-                                10}{" "}
-                            completions,{" "}
-                            {Math.round((totalClaims / totalDays) * 10) / 10}{" "}
-                            claims per day
-                        </div>
-                    </div>
-                )}
-
-                {/* Real-time update indicator */}
-                {isAnimating && (
-                    <div className="mb-4">
-                        <div className="flex items-center justify-center gap-2">
-                            <div
-                                className={`w-2 h-2 rounded-full animate-ping ${
-                                    mode === "hybrid"
-                                        ? "bg-green-400"
-                                        : "bg-green-400"
-                                }`}
-                            ></div>
-                            <span className="text-green-300 text-xs">
-                                Updating in real-time
-                            </span>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -421,7 +374,7 @@ export default function QuestPerformance({
                 <div className="pt-4 border-t border-slate-700">
                     <div className="flex items-center justify-between">
                         <p className="text-slate-400 text-xs">
-                            Quest daily statistics ({mode} mode)
+                            Daily quest completion metrics
                         </p>
                         {lastUpdated && (
                             <div className="text-slate-500 text-xs">

@@ -9,39 +9,82 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
-import type { DailyActivityWallets } from "@prisma/client";
+import type { DailyActivityPolls } from "@prisma/client";
 
-interface DailyActiveWalletsProps {
-    dailyWalletsData: DailyActivityWallets[];
+interface PollPerformanceProps {
+    dailyPollsData: DailyActivityPolls[];
     isLoading?: boolean;
     error?: string | null;
     onRefresh?: () => void;
     lastUpdated?: Date | null;
 }
 
-export default function DailyActiveWallets({
-    dailyWalletsData,
+interface PollPopularityItem {
+    pollId: string;
+    pollTitle: string;
+    bettingMode: boolean;
+    participation: number;
+}
+
+export default function PollPerformance({
+    dailyPollsData,
     isLoading = false,
     error = null,
     onRefresh,
     lastUpdated,
-}: DailyActiveWalletsProps) {
+}: PollPerformanceProps) {
     const lastDayData =
-        dailyWalletsData && dailyWalletsData.length > 0
-            ? dailyWalletsData[dailyWalletsData.length - 1]
+        dailyPollsData && dailyPollsData.length > 0
+            ? dailyPollsData[dailyPollsData.length - 1]
             : null;
 
-    const lastDayActiveWallets = lastDayData?.active || 0;
-    const lastDayNewUsers = lastDayData?.new || 0;
-    const lastDayRevisitUsers = lastDayData?.revisit || 0;
+    const lastDayParticipation = lastDayData?.participation || 0;
+
+    const totalParticipation =
+        dailyPollsData?.reduce(
+            (sum, item) => sum + (item.participation || 0),
+            0
+        ) || 0;
+
+    // Get popular polls from the latest day
+    const latestPollPopularity = lastDayData?.pollPopularity
+        ? (lastDayData.pollPopularity as unknown as PollPopularityItem[])
+        : [];
+
+    const bettingPolls = latestPollPopularity.filter((p) => p.bettingMode);
+    const regularPolls = latestPollPopularity.filter((p) => !p.bettingMode);
+
+    const totalBettingParticipation = bettingPolls.reduce(
+        (sum, poll) => sum + poll.participation,
+        0
+    );
+    const totalRegularParticipation = regularPolls.reduce(
+        (sum, poll) => sum + poll.participation,
+        0
+    );
+
+    const topPolls = latestPollPopularity
+        .sort((a, b) => b.participation - a.participation)
+        .slice(0, 5);
 
     const chartData =
-        dailyWalletsData?.map((item: DailyActivityWallets) => ({
-            date: item.date,
-            activeWallets: item.active || 0,
-            newUsers: item.new || 0,
-            revisitUsers: item.revisit || 0,
-        })) || [];
+        dailyPollsData?.map((item: DailyActivityPolls) => {
+            const popularity =
+                (item.pollPopularity as unknown as PollPopularityItem[]) || [];
+            const bettingCount = popularity
+                .filter((p) => p.bettingMode)
+                .reduce((sum, p) => sum + p.participation, 0);
+            const regularCount = popularity
+                .filter((p) => !p.bettingMode)
+                .reduce((sum, p) => sum + p.participation, 0);
+
+            return {
+                date: item.date,
+                total: item.participation || 0,
+                betting: bettingCount,
+                regular: regularCount,
+            };
+        }) || [];
 
     if (error) {
         return (
@@ -85,7 +128,7 @@ export default function DailyActiveWallets({
                 <div className="flex items-center justify-between mb-6 gap-4">
                     <div className="flex-1" />
                     <h2 className="text-sm font-medium text-slate-400 uppercase tracking-wide">
-                        DAILY ACTIVE WALLETS
+                        POLL PERFORMANCE
                     </h2>
                     <div className="flex-1 flex justify-end">
                         <button
@@ -117,54 +160,52 @@ export default function DailyActiveWallets({
 
                 <div className="mb-6">
                     <div className="text-4xl font-bold text-white mb-2">
-                        {lastDayActiveWallets?.toLocaleString() || "0"}
+                        {totalParticipation?.toLocaleString() || "0"}
+                    </div>
+                    <div className="text-sm text-slate-400">
+                        Total Poll Participation
                     </div>
                 </div>
 
-                {lastDayData && (
-                    <div className="mb-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="text-center">
-                                <div className="text-lg font-semibold text-green-400">
-                                    <span>
-                                        {lastDayNewUsers.toLocaleString()}
-                                    </span>
-                                    <span className="text-xs font-light text-green-500">
-                                        {" ("}
-                                        {(
-                                            (lastDayNewUsers /
-                                                lastDayActiveWallets) *
-                                            100
-                                        ).toFixed(2)}
-                                        %)
-                                    </span>
-                                </div>
-                                <div className="text-xs text-green-300">
-                                    New Users
-                                </div>
+                <div className="mb-4">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="text-center">
+                            <div className="text-lg font-semibold text-blue-400">
+                                <span>
+                                    {totalBettingParticipation.toLocaleString()}
+                                </span>
                             </div>
-                            <div className="text-center">
-                                <div className="text-lg font-semibold text-blue-400">
-                                    <span>
-                                        {lastDayRevisitUsers.toLocaleString()}
-                                    </span>
-                                    <span className="text-xs font-light text-blue-500">
-                                        {" ("}
-                                        {(
-                                            (lastDayRevisitUsers /
-                                                lastDayActiveWallets) *
-                                            100
-                                        ).toFixed(2)}
-                                        %)
-                                    </span>
-                                </div>
-                                <div className="text-xs text-blue-300">
-                                    Revisit Users
-                                </div>
+                            <div className="text-xs text-blue-300">
+                                Betting Polls
+                            </div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-lg font-semibold text-green-400">
+                                <span>
+                                    {totalRegularParticipation.toLocaleString()}
+                                </span>
+                            </div>
+                            <div className="text-xs text-green-300">
+                                Regular Polls
                             </div>
                         </div>
                     </div>
-                )}
+
+                    {lastDayData && (
+                        <div className="grid grid-cols-1 gap-4 pt-4 border-t border-slate-700/30">
+                            <div className="text-center">
+                                <div className="text-sm font-semibold text-cyan-300">
+                                    <span>
+                                        {lastDayParticipation.toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="text-xs text-cyan-200">
+                                    {`Today's Participation`}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Chart section */}
                 {chartData && chartData.length > 0 && (
@@ -217,41 +258,7 @@ export default function DailyActiveWallets({
                                     />
                                     <Line
                                         type="monotone"
-                                        dataKey="activeWallets"
-                                        stroke="#FFFFFF"
-                                        strokeWidth={2}
-                                        dot={{
-                                            fill: "#FFFFFF",
-                                            strokeWidth: 0,
-                                            r: 2,
-                                        }}
-                                        activeDot={{
-                                            r: 4,
-                                            stroke: "#FFFFFF",
-                                            strokeWidth: 2,
-                                        }}
-                                        name="Total Active"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="newUsers"
-                                        stroke="#10B981"
-                                        strokeWidth={2}
-                                        dot={{
-                                            fill: "#10B981",
-                                            strokeWidth: 0,
-                                            r: 2,
-                                        }}
-                                        activeDot={{
-                                            r: 4,
-                                            stroke: "#10B981",
-                                            strokeWidth: 2,
-                                        }}
-                                        name="New Users"
-                                    />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="revisitUsers"
+                                        dataKey="betting"
                                         stroke="#3B82F6"
                                         strokeWidth={2}
                                         dot={{
@@ -264,7 +271,24 @@ export default function DailyActiveWallets({
                                             stroke: "#3B82F6",
                                             strokeWidth: 2,
                                         }}
-                                        name="Revisit Users"
+                                        name="Betting Polls"
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="regular"
+                                        stroke="#10B981"
+                                        strokeWidth={2}
+                                        dot={{
+                                            fill: "#10B981",
+                                            strokeWidth: 0,
+                                            r: 2,
+                                        }}
+                                        activeDot={{
+                                            r: 4,
+                                            stroke: "#10B981",
+                                            strokeWidth: 2,
+                                        }}
+                                        name="Regular Polls"
                                     />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -273,17 +297,64 @@ export default function DailyActiveWallets({
                         {/* Chart legend */}
                         <div className="flex justify-center mt-2 space-x-4 text-xs">
                             <div className="flex items-center">
-                                <div className="w-3 h-0.5 bg-white mr-1"></div>
-                                <span className="text-slate-300">Total</span>
+                                <div className="w-3 h-0.5 bg-blue-400 mr-1"></div>
+                                <span className="text-slate-300">
+                                    Betting Polls
+                                </span>
                             </div>
                             <div className="flex items-center">
                                 <div className="w-3 h-0.5 bg-green-400 mr-1"></div>
-                                <span className="text-slate-300">New</span>
+                                <span className="text-slate-300">
+                                    Regular Polls
+                                </span>
                             </div>
-                            <div className="flex items-center">
-                                <div className="w-3 h-0.5 bg-blue-400 mr-1"></div>
-                                <span className="text-slate-300">Revisit</span>
-                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Top Polls section */}
+                {topPolls.length > 0 && (
+                    <div className="mb-6">
+                        <h3 className="text-sm font-medium text-slate-400 mb-3 text-left">
+                            {`Today's Most Popular Polls`}
+                        </h3>
+                        <div className="space-y-2">
+                            {topPolls.map((poll, index) => (
+                                <div
+                                    key={poll.pollId}
+                                    className="flex items-center justify-between bg-slate-700/30 rounded-lg p-3"
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className="text-xs font-bold text-slate-400 w-4">
+                                            #{index + 1}
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-sm font-medium text-white truncate max-w-48">
+                                                {poll.pollTitle}
+                                            </div>
+                                            <div className="text-xs text-slate-400">
+                                                {poll.bettingMode ? (
+                                                    <span className="text-blue-400">
+                                                        Betting
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-green-400">
+                                                        Regular
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-sm font-semibold text-white">
+                                            {poll.participation.toLocaleString()}
+                                        </div>
+                                        <div className="text-xs text-slate-400">
+                                            participants
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -292,7 +363,7 @@ export default function DailyActiveWallets({
                 <div className="pt-4 border-t border-slate-700">
                     <div className="flex items-center justify-between">
                         <p className="text-slate-400 text-xs">
-                            Latest daily active users metric
+                            Daily poll participation metrics
                         </p>
                         {lastUpdated && (
                             <div className="text-slate-500 text-xs">

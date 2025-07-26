@@ -1828,40 +1828,6 @@ model OnchainRaffle {
   @@index([raffleId])
 }
 
-model OnchainRafflePrizeDistribution {
-  id              String            @id @default(cuid())
-  contractAddress String
-  raffleId        String
-  resultId        Int
-  batchId         String
-  chunkId         String            @default("0")
-  prizeIndex      Int
-  prizeType       Int
-  assetId         String?
-  spgAddress      String?
-  tokenAddress    String?
-  amount          Int?
-  playerId        String
-  playerAddress   String
-  status          RafflePrizeStatus @default(PENDING)
-  retryCount      Int               @default(0)
-  maxRetries      Int               @default(3)
-  createdAt       DateTime          @default(now())
-  processedAt     DateTime?
-  distributedAt   DateTime?
-  lastRetryAt     DateTime?
-  transactionHash String?
-  failureReason   String?
-  gasUsed         String?
-
-  @@unique([contractAddress, raffleId, resultId])
-  @@index([status, createdAt])
-  @@index([batchId, chunkId])
-  @@index([contractAddress, raffleId])
-  @@index([status, retryCount])
-  @@index([playerId])
-}
-
 model PollBettingSettlementLog {
   id                    String                      @id @default(cuid())
   pollId                String
@@ -2035,52 +2001,71 @@ model NotificationStats {
   @@map("notification_stats")
 }
 
-model PlayerAssetsStatus {
-  id                      String                 @id @default(cuid())
-  assetId                 String
-  totalBalance            Int                    @default(0)
-  rewardedCount           Int                    @default(0)
-  date                    DateTime               @default(now()) @db.Date
-  dailyActivityWalletId   String?
-  monthlyActivityWalletId String?
-  dailyActivityWallet     DailyActivityWallet?   @relation(fields: [dailyActivityWalletId], references: [id])
-  monthlyActivityWallet   MonthlyActivityWallet? @relation(fields: [monthlyActivityWalletId], references: [id])
+model DailyActivityWallets {
+  id String @id @default(cuid())
+  date DateTime @unique
+  active Int @default(0)
+  new Int @default(0)
+  revisit Int @default(0)
+  providerPopularity Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([assetId, date])
-  @@unique([assetId, dailyActivityWalletId])
-  @@unique([assetId, monthlyActivityWalletId])
-  @@index([date])
-  @@index([assetId])
 }
 
-model DailyActivityWallet {
-  id                       String               @id @default(cuid())
-  date                     DateTime             @unique @default(now()) @db.Date
-  activeWallets            Int                  @default(0)
-  newWallets               Int                  @default(0)
-  returningWallets         Int                  @default(0)
-  totalWallets             Int                  @default(0)
-  pollParticipationCount   Int                  @default(0)
-  questParticipationCount  Int                  @default(0)
-  raffleParticipationCount Int                  @default(0)
-  playerAssetsStatus       PlayerAssetsStatus[]
-
-  @@index([date])
+model DailyActivityQuests {
+  id String @id @default(cuid())
+  date DateTime @unique
+  completed Int @default(0)
+  claimed Int @default(0)
+  questPopularity Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model MonthlyActivityWallet {
-  id                       String               @id @default(cuid())
-  date                     DateTime             @unique @default(now()) @db.Date
-  activeWallets            Int                  @default(0)
-  newWallets               Int                  @default(0)
-  returningWallets         Int                  @default(0)
-  totalWallets             Int                  @default(0)
-  pollParticipationCount   Int                  @default(0)
-  questParticipationCount  Int                  @default(0)
-  raffleParticipationCount Int                  @default(0)
-  playerAssetsStatus       PlayerAssetsStatus[]
+model DailyActivityPolls {
+  id String @id @default(cuid())
+  date DateTime @unique
+  participation Int @default(0)
+  pollPopularity Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
+// Separated raffle analytics for better performance and clarity
+model DailyActivityOffchainRaffles {
+  id String @id @default(cuid())
+  date DateTime @unique
+  participation Int @default(0)
+  rafflePopularity Json // Array of { raffleId, raffleTitle, participation }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("DailyActivityRaffles") // Keep existing table name for backward compatibility
+}
+
+model DailyActivityOnchainRaffles {
+  id String @id @default(cuid())
+  date DateTime
+  contractAddress String
+  networkId String
+  participation Int @default(0)
+  totalDrawnParticipants Int @default(0)
+  rafflePopularity Json // Array of { raffleId, raffleTitle, participation, contractAddress }
+  
+  // Blockchain-specific metrics
+  totalEvents Int @default(0)
+  processedBlocks Int @default(0)
+  blockRange Json // { startBlock, endBlock }
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Composite unique constraint for date + contract + network
+  @@unique([date, contractAddress, networkId])
   @@index([date])
+  @@index([contractAddress])
+  @@index([networkId])
 }
 
 enum QuestLogStatus {

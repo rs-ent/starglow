@@ -1623,37 +1623,6 @@ Table OnchainRaffle {
   }
 }
 
-Table OnchainRafflePrizeDistribution {
-  id String [pk]
-  contractAddress String [not null]
-  raffleId String [not null]
-  resultId Int [not null]
-  batchId String [not null]
-  chunkId String [not null, default: '0']
-  prizeIndex Int [not null]
-  prizeType Int [not null]
-  assetId String
-  spgAddress String
-  tokenAddress String
-  amount Int
-  playerId String [not null]
-  playerAddress String [not null]
-  status RafflePrizeStatus [not null, default: 'PENDING']
-  retryCount Int [not null, default: 0]
-  maxRetries Int [not null, default: 3]
-  createdAt DateTime [default: `now()`, not null]
-  processedAt DateTime
-  distributedAt DateTime
-  lastRetryAt DateTime
-  transactionHash String
-  failureReason String
-  gasUsed String
-
-  indexes {
-    (contractAddress, raffleId, resultId) [unique]
-  }
-}
-
 Table PollBettingSettlementLog {
   id String [pk]
   pollId String [not null]
@@ -1803,48 +1772,62 @@ Table notification_stats {
   updatedAt DateTime [not null]
 }
 
-Table PlayerAssetsStatus {
+Table DailyActivityWallets {
   id String [pk]
-  assetId String [not null]
-  totalBalance Int [not null, default: 0]
-  rewardedCount Int [not null, default: 0]
-  date DateTime [default: `now()`, not null]
-  dailyActivityWalletId String
-  monthlyActivityWalletId String
-  dailyActivityWallet DailyActivityWallet
-  monthlyActivityWallet MonthlyActivityWallet
+  date DateTime [unique, not null]
+  active Int [not null, default: 0]
+  new Int [not null, default: 0]
+  revisit Int [not null, default: 0]
+  providerPopularity Json [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table DailyActivityQuests {
+  id String [pk]
+  date DateTime [unique, not null]
+  completed Int [not null, default: 0]
+  claimed Int [not null, default: 0]
+  questPopularity Json [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table DailyActivityPolls {
+  id String [pk]
+  date DateTime [unique, not null]
+  participation Int [not null, default: 0]
+  pollPopularity Json [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table DailyActivityRaffles {
+  id String [pk]
+  date DateTime [unique, not null]
+  participation Int [not null, default: 0]
+  rafflePopularity Json [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+}
+
+Table DailyActivityOnchainRaffles {
+  id String [pk]
+  date DateTime [not null]
+  contractAddress String [not null]
+  networkId String [not null]
+  participation Int [not null, default: 0]
+  totalDrawnParticipants Int [not null, default: 0]
+  rafflePopularity Json [not null]
+  totalEvents Int [not null, default: 0]
+  processedBlocks Int [not null, default: 0]
+  blockRange Json [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
 
   indexes {
-    (assetId, date) [unique]
-    (assetId, dailyActivityWalletId) [unique]
-    (assetId, monthlyActivityWalletId) [unique]
+    (date, contractAddress, networkId) [unique]
   }
-}
-
-Table DailyActivityWallet {
-  id String [pk]
-  date DateTime [default: `now()`, unique, not null]
-  activeWallets Int [not null, default: 0]
-  newWallets Int [not null, default: 0]
-  returningWallets Int [not null, default: 0]
-  totalWallets Int [not null, default: 0]
-  pollParticipationCount Int [not null, default: 0]
-  questParticipationCount Int [not null, default: 0]
-  raffleParticipationCount Int [not null, default: 0]
-  playerAssetsStatus PlayerAssetsStatus [not null]
-}
-
-Table MonthlyActivityWallet {
-  id String [pk]
-  date DateTime [default: `now()`, unique, not null]
-  activeWallets Int [not null, default: 0]
-  newWallets Int [not null, default: 0]
-  returningWallets Int [not null, default: 0]
-  totalWallets Int [not null, default: 0]
-  pollParticipationCount Int [not null, default: 0]
-  questParticipationCount Int [not null, default: 0]
-  raffleParticipationCount Int [not null, default: 0]
-  playerAssetsStatus PlayerAssetsStatus [not null]
 }
 
 Table StakeReward {
@@ -2435,7 +2418,3 @@ Ref: PollBettingSettlementLog.pollId > Poll.id
 Ref: user_notifications.playerId > Player.id [delete: Cascade]
 
 Ref: notification_settings.playerId - Player.id [delete: Cascade]
-
-Ref: PlayerAssetsStatus.dailyActivityWalletId > DailyActivityWallet.id
-
-Ref: PlayerAssetsStatus.monthlyActivityWalletId > MonthlyActivityWallet.id
